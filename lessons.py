@@ -1,5 +1,6 @@
 import pygame
 import sys
+import random
 from start import *
 
 all_sprites = pygame.sprite.Group()
@@ -12,6 +13,7 @@ class Lesson(pygame.sprite.Sprite):
         self.image = load_image(f'lesson{n}.png', -1)
         self.rect = self.image.get_rect()
         self.rect.x = 160
+        self.n = n
         if n == 1:
             self.rect.y = 25
         elif n == 2:
@@ -20,8 +22,8 @@ class Lesson(pygame.sprite.Sprite):
             self.rect.y = 475
 
     def update(self, *args):
-        if args[0] == pygame.MOUSEBUTTONDOWN and self.rect.collidepoint(args[0].pos):
-
+        if self.rect.collidepoint(args[0].pos):
+            return generate_level(f'level{self.n}.txt')
 
 
 def display_lessons():
@@ -34,10 +36,40 @@ def display_lessons():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
-            all_sprites.update(event)
-            all_sprites.draw(screen)
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                lessons_group.update(event)
+        all_sprites.draw(screen)
         pygame.display.flip()
         clock.tick(FPS)
 
 
-display_lessons()
+def generate_level(filename):
+    filename = "data/" + filename
+    sp = []
+    with open(filename, mode='r') as mapfile:
+        text = mapfile.readlines()
+        map_width = int(text[1])
+        for i in text[0].split(';'):
+            if not i or '\n' in i:
+                continue
+            for j in range(0, len(i) - 1, 2):
+                k = i[j]
+                typ = i[j + 1]
+                if typ == 'm':
+                    elem = '*'
+                else:
+                    elem = typ
+                # m - Метеоры
+                # k - корабли, которые не двигаются
+            sp.append((k, elem))
+    map = []
+    for i in range(len(sp)):
+        s = []
+        k = int(sp[i][0])
+        s += k * elem
+        s += (map_width - k) * '-'
+        random.shuffle(s)
+        map.append(''.join(s))
+    print(map)
+
+
