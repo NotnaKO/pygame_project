@@ -22,6 +22,8 @@ class Lesson(pygame.sprite.Sprite):
     def update(self, *args):
         if self.rect.collidepoint(args[0].pos):
             return generate_level(f'level{self.n}.txt')
+        else:
+            return False
 
 
 def display_lessons():
@@ -35,7 +37,10 @@ def display_lessons():
             if event.type == pygame.QUIT:
                 terminate()
             if event.type == pygame.MOUSEBUTTONDOWN:
-                lessons_group.update(event)
+                for i in lessons_group:
+                    if i.update(event):
+                        return i.update(event)
+
         all_sprites.draw(screen)
         pygame.display.flip()
         clock.tick(FPS)
@@ -47,8 +52,9 @@ def generate_level(filename):
     with open(filename, mode='r') as mapfile:
         text = mapfile.readlines()
         map_width = int(text[1])
-        for i in text[0].split(';'):
-            if not i or '\n' in i:
+        for i in text[0].strip().split(';'):
+            sp1 = []
+            if not i:
                 continue
             for j in range(0, len(i) - 1, 2):
                 k = i[j]
@@ -59,15 +65,20 @@ def generate_level(filename):
                     elem = typ
                 # m - Метеоры
                 # k - корабли, которые не двигаются
-            sp.append((k, elem))
+                sp1.extend((k, elem))
+            sp.append(sp1)
     map = []
     for i in range(len(sp)):
         s = []
-        k = int(sp[i][0])
-        s += k * elem
-        s += (map_width - k) * '-'
+        for j in range(0, len(sp[i]) - 1, 2):
+            k = int(sp[i][j])
+            elem = sp[i][j + 1]
+            s += k * elem
+        if map_width < len(s):
+            s = s[:map_width]
+        s += (map_width - len(s)) * '-'
         random.shuffle(s)
         map.append(''.join(s))
-    print(map)
+    return map
 
 
