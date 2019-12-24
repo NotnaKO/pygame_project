@@ -12,12 +12,13 @@ clock = pygame.time.Clock()
 
 def load_image(name, colorkey=None):
     fullname = os.path.join('data', name)
-    image = pygame.image.load(fullname)
-    image = image.convert_alpha()
+    image = pygame.image.load(fullname).convert()
     if colorkey is not None:
         if colorkey == -1:
             colorkey = image.get_at((0, 0))
         image.set_colorkey(colorkey)
+    else:
+        image = image.convert_alpha()
     return image
 
 
@@ -44,17 +45,11 @@ def start_screen():
         sp.append(intro_rect)
         screen.blit(string_rendered, intro_rect)
     r = sp[1]
-
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
-            elif event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN and r.x < event.pos[0] < r.x + r.w \
-                    and r.y < event.pos[1] < r.y + r.h:
+            elif event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN and r.collidepoint(event.pos):
                 return
         pygame.display.flip()
         clock.tick(FPS)
-
-
-start_screen()
-

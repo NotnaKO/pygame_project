@@ -1,7 +1,7 @@
 import pygame
 import sys
 import os
-from start import load_image, start_screen
+from start import *
 
 start_screen()
 player_group = pygame.sprite.Group()
