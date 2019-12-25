@@ -3,7 +3,9 @@ import pygame
 
 player_group = pygame.sprite.Group()
 meteors_group = pygame.sprite.Group()
-images = {'player': load_image('player.jpg', -1), 'meteor': load_image('meteor.jpg', -1)}
+weapons_group = pygame.sprite.Group()
+images = {'player': load_image('player.jpg', -1), 'meteor': load_image('meteor.jpg', -1),
+          'red_weap': load_image('red_weapon.png')}
 
 
 class Player(pygame.sprite.Sprite):
@@ -17,6 +19,8 @@ class Player(pygame.sprite.Sprite):
         self.damage = 10
         self.health = 100
         self.speed = PLAYER_SPEED
+        self.ammunition = 10
+        self.n = 0
 
     def hurt(self, damage):
         self.health -= damage
@@ -61,6 +65,11 @@ class Player(pygame.sprite.Sprite):
     def deceleration(self):
         self.rect.y += PLAYER_SPEED // 2
 
+    def shot(self):
+        if self.n <= self.ammunition:
+            wea = PlayerWeapon(self.n)
+        self.n += 1
+
 
 class Meteor(pygame.sprite.Sprite):
     def __init__(self, y, x):
@@ -95,6 +104,30 @@ class Camera:
     def update(self, target):
         self.dx = -(target.rect.x + target.rect.w // 2 - WIDTH // 2)
         self.dy = -(target.rect.y + target.rect.h - HEIGHT)
+
+
+class PlayerWeapon(pygame.sprite.Sprite):
+    def __init__(self, n):
+        super().__init__(all_sprites, weapons_group)
+        self.image = images['red_weap']
+        self.rect = self.image.get_rect()
+        if n == 0:
+            self.rect.x = player.rect.x + 5
+        else:
+            self.rect.x = player.rect.right - 10
+        self.rect.y = player.rect.y
+        self.damage = 30
+
+    def move(self):
+        self.rect.y -= PLAYER_SPEED * 3
+
+    def update(self):
+        self.move()
+        if pygame.sprite.spritecollideany(self, meteors_group):
+            spr = pygame.sprite.spritecollideany(self, meteors_group)
+            spr.hurt(self.damage)
+            self.damage = 0
+        # КАкой-то метод убирающий пулю
 
 
 GAME_SPEED = 200  # дальность расположения метеоров
@@ -154,6 +187,8 @@ while True:
                 accel = True
             if event.key == pygame.K_s or event.key == pygame.K_DOWN:
                 deccel = True
+            if event.key == pygame.K_e:
+                player.shot()
         if event.type == pygame.KEYUP:
             if event.key == pygame.K_a or event.key == pygame.K_LEFT:
                 lefting = False
@@ -163,7 +198,7 @@ while True:
                 accel = False
             if event.key == pygame.K_s or event.key == pygame.K_DOWN:
                 deccel = False
-    player.update()
+    all_sprites.update()
     camera.update(player)
     for sprite in all_sprites:
         camera.apply(sprite)
