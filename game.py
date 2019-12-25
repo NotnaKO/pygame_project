@@ -87,7 +87,10 @@ class Meteor(pygame.sprite.Sprite):
         self.rect.x = x * COLCOUNT
         self.vect = [random.randint(-1, 1), random.randint(0, 1)]
         self.damage = 50
+        self.chl = False
+        self.chr = False
         self.health = 30
+        self.a = False
 
     def move(self):
         self.rect.x += self.vect[0]
@@ -102,19 +105,63 @@ class Meteor(pygame.sprite.Sprite):
         meteors_group.remove(self)
         all_sprites.remove(self)
 
+    def fun(self):
+        self.a = False
+
     def change_moving(self):
-        self.vect = [-self.vect[0], -self.vect[1]]
+        self.vect = [-self.vect[0], self.vect[1]]
+
+    def change_moving_with_spr(self, spr):
+        if self.a or spr.a:
+            return
+        self.a = True
+        spr.a = True
+        if spr.rect.x <= self.rect.x:
+            if spr.vect[0] != -2:
+                spr.vect[0] -= 1
+            if self.vect[0] != 2:
+                self.vect[0] += 1
+        if spr.rect.x > self.rect.x:
+            if spr.vect[0] != 2:
+                spr.vect[0] += 1
+            if self.vect[0] != -2:
+                self.vect[0] -= 1
+        if spr.rect.y <= self.rect.y:
+            if spr.vect[1] >= 1:
+                spr.vect[1] -= 1
+            if self.vect[1] != 2:
+                self.vect[1] += 1
+        if spr.rect.y > self.rect.y:
+            if spr.vect[1] != 2:
+                spr.vect[1] += 1
+            if self.vect[1] >= 1:
+                self.vect[1] -= 1
+        self.hurt(1)
+        spr.hurt(1)
 
     def update(self):
         self.move()
-        spr = pygame.sprite.spritecollideany(self, meteors_group)
+        sp_spr = pygame.sprite.spritecollide(self, meteors_group, False)
+        spr = None
+        for i in sp_spr:
+            if i is not self:
+                spr = i
         if spr is not None:
+            self.change_moving_with_spr(spr)
+            spr.change_moving_with_spr(self)
+        if self.rect.right >= WIDTH and not self.chr:
+            self.chr = True
             self.change_moving()
-            spr.change_moving()
-        if self.rect.right >= WIDTH:
+        if self.rect.x < 0 and not self.chl:
+            self.chl = True
             self.change_moving()
-        if self.rect.x <= 0:
-            self.change_moving()
+        if self.rect.right < WIDTH:
+            self.chr = False
+        if self.rect.x >= 0:
+            self.chl = False
+        if player is not None:
+            if self.rect.y > player.rect.y + player.rect.h:
+                self.delete()
 
 
 class Camera:
@@ -134,9 +181,9 @@ class PlayerWeapon(pygame.sprite.Sprite):
         self.image = images['red_weap']
         self.rect = self.image.get_rect()
         if n == 0:
-            self.rect.x = player.rect.x + 5
+            self.rect.x = player.rect.x + 2
         else:
-            self.rect.x = player.rect.right - 10
+            self.rect.x = player.rect.right - 2
         self.rect.y = player.rect.y
         self.damage = 30
 
@@ -160,6 +207,7 @@ GAME_SPEED = 200  # дальность расположения метеоров
 COLCOUNT = WIDTH // 9  # Адаптировать к разным уровням
 MYEVENTTYPE = 10
 PLAYER_SPEED = 2
+METEORSK = 1 # Урон от столкновения между собой метеоров
 start_screen()
 levelmap = display_lessons()
 camera = Camera()
@@ -181,12 +229,13 @@ levelmap.append(''.join(sp))
 
 
 def view_lesson():
+    player = None
     for i in range(len(levelmap)):
         for j in range(len(levelmap[i])):
             if levelmap[i][j] == '-':
                 continue
             elif levelmap[i][j] == '*':
-                Meteor(i, j)
+                Meteor(i + 1, j)
             elif levelmap[i][j] == 'P':
                 player = Player(i, j)
     return player
@@ -230,5 +279,7 @@ while True:
         for sprite in all_sprites:
             camera.apply(sprite)
     all_sprites.draw(screen)
+    for i in meteors_group:
+        i.fun()
     pygame.display.flip()
     clock.tick(FPS)
