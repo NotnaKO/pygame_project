@@ -5,7 +5,7 @@ player_group = pygame.sprite.Group()
 meteors_group = pygame.sprite.Group()
 weapons_group = pygame.sprite.Group()
 images = {'player': load_image('player.jpg', -1), 'meteor': load_image('meteor.jpg', -1),
-          'red_weap': load_image('red_weapon.png')}
+          'red_weap': load_image('red_weapon.png', -1)}
 
 
 class Player(pygame.sprite.Sprite):
@@ -26,6 +26,7 @@ class Player(pygame.sprite.Sprite):
         self.health -= damage
         if self.health <= 0:
             self.play = False
+            self.delete()
 
     def heal(self, health):
         self.health += health
@@ -67,8 +68,14 @@ class Player(pygame.sprite.Sprite):
 
     def shot(self):
         if self.n <= self.ammunition:
-            wea = PlayerWeapon(self.n)
+            PlayerWeapon(self.n % 2)
         self.n += 1
+
+    def delete(self):
+        global player
+        player_group.remove(self)
+        all_sprites.remove(self)
+        player = None
 
 
 class Meteor(pygame.sprite.Sprite):
@@ -89,20 +96,35 @@ class Meteor(pygame.sprite.Sprite):
     def hurt(self, damage):
         self.health -= damage
         if self.health <= 0:
-            pass  # Здесь должна быть анимация уничтожения метеора
+            self.delete()
+
+    def delete(self):  # Пока так, но позже с анимацией
+        meteors_group.remove(self)
+        all_sprites.remove(self)
+
+    def change_moving(self):
+        self.vect = [-self.vect[0], -self.vect[1]]
+
+    def update(self):
+        self.move()
+        spr = pygame.sprite.spritecollideany(self, meteors_group)
+        if spr is not None:
+            self.change_moving()
+            spr.change_moving()
+        if self.rect.right >= WIDTH:
+            self.change_moving()
+        if self.rect.x <= 0:
+            self.change_moving()
 
 
 class Camera:
     def __init__(self):
-        self.dx = 0
         self.dy = 0
 
     def apply(self, obj):
-        obj.rect.x += self.dx
         obj.rect.y += self.dy
 
     def update(self, target):
-        self.dx = -(target.rect.x + target.rect.w // 2 - WIDTH // 2)
         self.dy = -(target.rect.y + target.rect.h - HEIGHT)
 
 
@@ -127,7 +149,11 @@ class PlayerWeapon(pygame.sprite.Sprite):
             spr = pygame.sprite.spritecollideany(self, meteors_group)
             spr.hurt(self.damage)
             self.damage = 0
-        # КАкой-то метод убирающий пулю
+            self.delete()
+
+    def delete(self):
+        weapons_group.remove(self)
+        all_sprites.remove(self)
 
 
 GAME_SPEED = 200  # дальность расположения метеоров
@@ -187,7 +213,7 @@ while True:
                 accel = True
             if event.key == pygame.K_s or event.key == pygame.K_DOWN:
                 deccel = True
-            if event.key == pygame.K_e:
+            if event.key == pygame.K_e and player is not None:
                 player.shot()
         if event.type == pygame.KEYUP:
             if event.key == pygame.K_a or event.key == pygame.K_LEFT:
@@ -199,10 +225,10 @@ while True:
             if event.key == pygame.K_s or event.key == pygame.K_DOWN:
                 deccel = False
     all_sprites.update()
-    camera.update(player)
-    for sprite in all_sprites:
-        camera.apply(sprite)
+    if player is not None:
+        camera.update(player)
+        for sprite in all_sprites:
+            camera.apply(sprite)
     all_sprites.draw(screen)
-
     pygame.display.flip()
     clock.tick(FPS)
