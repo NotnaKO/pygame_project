@@ -2,7 +2,7 @@ from lessons import *
 
 player_group = pygame.sprite.Group()
 meteors_group = pygame.sprite.Group()
-images = {'player': load_image('player.jpg', -1), 'meteor': load_image('meteor.jpg')}
+images = {'player': load_image('player.jpg', -1), 'meteor': load_image('meteor.jpg', -1)}
 
 
 class Player(pygame.sprite.Sprite):
@@ -10,7 +10,7 @@ class Player(pygame.sprite.Sprite):
         super().__init__(player_group, all_sprites)
         self.image = images['player']
         self.rect = self.image.get_rect()
-        self.rect.x = x
+        self.rect.x = x * COLCOUNT
         self.rect.y = y * GAME_SPEED
         self.play = True
         self.damage = 10
@@ -37,8 +37,11 @@ class Meteor(pygame.sprite.Sprite):
         self.image = images['meteor']
         self.rect = self.image.get_rect()
         self.rect.y = y * GAME_SPEED
-        self.rect.x = x
+        self.rect.x = x * COLCOUNT
         self.vect = [random.randint(-1, 1), random.randint(0, 1)]
+        self.damage = 50
+        self.health = 30
+
 
     def move(self):
         self.rect.x += self.vect[0]
@@ -59,8 +62,8 @@ class Camera:
         self.dy = -(target.rect.y + target.rect.h - HEIGHT)
 
 
-GAME_SPEED = 50
-COLCOUNT = WIDTH // 11  # Адаптировать к разным уровням
+GAME_SPEED = 200
+COLCOUNT = WIDTH // 9 # Адаптировать к разным уровням
 MYEVENTTYPE = 10
 start_screen()
 levelmap = display_lessons()

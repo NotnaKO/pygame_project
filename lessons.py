@@ -68,6 +68,7 @@ def generate_level(filename):
                 sp1.extend((k, elem))
             sp.append(sp1)
     map = []
+    sp = sp[::-1]
     for i in range(len(sp)):
         s = []
         for j in range(0, len(sp[i]) - 1, 2):
