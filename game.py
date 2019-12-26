@@ -1,11 +1,5 @@
-from lessons import *
+from end import *
 import pygame
-
-player_group = pygame.sprite.Group()
-meteors_group = pygame.sprite.Group()
-weapons_group = pygame.sprite.Group()
-images = {'player': load_image('player.jpg', -1), 'meteor': load_image('meteor.jpg', -1),
-          'red_weap': load_image('red_weapon.png', -1)}
 
 
 class Player(pygame.sprite.Sprite):
@@ -20,7 +14,6 @@ class Player(pygame.sprite.Sprite):
         self.health = 100
         self.speed = PLAYER_SPEED
         self.ammunition = 10
-        self.n = 0
 
     def hurt(self, damage):
         self.health -= damage
@@ -66,10 +59,15 @@ class Player(pygame.sprite.Sprite):
     def deceleration(self):
         self.rect.y += PLAYER_SPEED // 2
 
-    def shot(self):
-        if self.n <= self.ammunition:
-            PlayerWeapon(self.n % 2)
-        self.n += 1
+    def shot_e(self):
+        if self.ammunition > 0:
+            PlayerWeapon(1)
+        self.ammunition -= 1
+
+    def shot_q(self):
+        if self.ammunition > 0:
+            PlayerWeapon(0)
+        self.ammunition -= 1
 
     def delete(self):
         global player
@@ -175,6 +173,19 @@ class Camera:
         self.dy = -(target.rect.y + target.rect.h - HEIGHT)
 
 
+def view_lesson():
+    player = None
+    for i in range(len(levelmap)):
+        for j in range(len(levelmap[i])):
+            if levelmap[i][j] == '-':
+                continue
+            elif levelmap[i][j] == '*':
+                Meteor(i + 1, j)
+            elif levelmap[i][j] == 'P':
+                player = Player(i, j)
+    return player
+
+
 class PlayerWeapon(pygame.sprite.Sprite):
     def __init__(self, n):
         super().__init__(all_sprites, weapons_group)
@@ -207,79 +218,82 @@ GAME_SPEED = 200  # дальность расположения метеоров
 COLCOUNT = WIDTH // 9  # Адаптировать к разным уровням
 MYEVENTTYPE = 10
 PLAYER_SPEED = 2
-METEORSK = 1 # Урон от столкновения между собой метеоров
-start_screen()
-levelmap = display_lessons()
+METEORSK = 1  # Урон от столкновения между собой метеоров
+player_group = pygame.sprite.Group()
+meteors_group = pygame.sprite.Group()
+weapons_group = pygame.sprite.Group()
+images = {'player': load_image('player.jpg', -1), 'meteor': load_image('meteor.jpg', -1),
+          'red_weap': load_image('red_weapon.png', -1)}
 camera = Camera()
 all_sprites = pygame.sprite.Group()
-lessons_group = None
-lw = len(levelmap[0])
-if lw % 2 != 0:
-    pl_xn = (lw - 1) // 2
-else:
-    pl_xn = lw // 2
-sp = []
-for i in range(lw):
-    if i != pl_xn:
-        sp.append('-')
-    else:
-        sp.append('P')
-levelmap.append(''.join(sp).replace('P', '-'))
-levelmap.append(''.join(sp))
-
-
-def view_lesson():
-    player = None
-    for i in range(len(levelmap)):
-        for j in range(len(levelmap[i])):
-            if levelmap[i][j] == '-':
-                continue
-            elif levelmap[i][j] == '*':
-                Meteor(i + 1, j)
-            elif levelmap[i][j] == 'P':
-                player = Player(i, j)
-    return player
-
-
-player = view_lesson()
-fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
-screen.blit(fon, (0, 0))
-righting, lefting = False, False
-accel, deccel = False, False
-
+start_screen()
+levelmap = display_lessons()
 while True:
+    lessons_group = None
+    lw = len(levelmap[0])
+    if lw % 2 != 0:
+        pl_xn = (lw - 1) // 2
+    else:
+        pl_xn = lw // 2
+    sp = []
+    for i in range(lw):
+        if i != pl_xn:
+            sp.append('-')
+        else:
+            sp.append('P')
+    levelmap.append(''.join(sp).replace('P', '-'))
+    levelmap.append(''.join(sp))
+
+    player = view_lesson()
     fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            terminate()
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_a or event.key == pygame.K_LEFT:
-                lefting = True
-            if event.key == pygame.K_d or event.key == pygame.K_RIGHT:
-                righting = True
-            if event.key == pygame.K_w or event.key == pygame.K_UP:
-                accel = True
-            if event.key == pygame.K_s or event.key == pygame.K_DOWN:
-                deccel = True
-            if event.key == pygame.K_e and player is not None:
-                player.shot()
-        if event.type == pygame.KEYUP:
-            if event.key == pygame.K_a or event.key == pygame.K_LEFT:
-                lefting = False
-            if event.key == pygame.K_d or event.key == pygame.K_RIGHT:
-                righting = False
-            if event.key == pygame.K_w or event.key == pygame.K_UP:
-                accel = False
-            if event.key == pygame.K_s or event.key == pygame.K_DOWN:
-                deccel = False
-    all_sprites.update()
-    if player is not None:
-        camera.update(player)
-        for sprite in all_sprites:
-            camera.apply(sprite)
-    all_sprites.draw(screen)
-    for i in meteors_group:
-        i.fun()
-    pygame.display.flip()
-    clock.tick(FPS)
+    righting, lefting = False, False
+    accel, deccel = False, False
+
+    while True:
+        fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
+        screen.blit(fon, (0, 0))
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_a or event.key == pygame.K_LEFT:
+                    lefting = True
+                if event.key == pygame.K_d or event.key == pygame.K_RIGHT:
+                    righting = True
+                if event.key == pygame.K_w or event.key == pygame.K_UP:
+                    accel = True
+                if event.key == pygame.K_s or event.key == pygame.K_DOWN:
+                    deccel = True
+                if event.key == pygame.K_e and player is not None:
+                    player.shot_e()
+                if event.key ==pygame.K_q and player is not None:
+                    player.shot_q()
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_a or event.key == pygame.K_LEFT:
+                    lefting = False
+                if event.key == pygame.K_d or event.key == pygame.K_RIGHT:
+                    righting = False
+                if event.key == pygame.K_w or event.key == pygame.K_UP:
+                    accel = False
+                if event.key == pygame.K_s or event.key == pygame.K_DOWN:
+                    deccel = False
+        all_sprites.update()
+        if player is None:
+            levelmap = end_screen(False)
+            break
+        k = 0
+        for i in meteors_group:
+            k += 1
+        if k == 0:
+            levelmap = end_screen(True)
+            break
+        if player is not None:
+            camera.update(player)
+            for sprite in all_sprites:
+                camera.apply(sprite)
+        all_sprites.draw(screen)
+        for i in meteors_group:
+            i.fun()
+        pygame.display.flip()
+        clock.tick(FPS)
