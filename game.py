@@ -199,6 +199,11 @@ class Shakla(pygame.sprite.Sprite):
             self.draw(player.health)
 
 
+class AmCount(pygame.sprite.Sprite):
+    def __init__(self):
+        super().__init__(all_sprites)
+
+
 def view_lesson():
     player1 = None
     for i1 in range(len(levelmap)):
