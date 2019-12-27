@@ -1,8 +1,81 @@
 import random
-from start import *
+import pygame
+import os
+import sys
+
+FPS = 60
+pygame.init()
+size = WIDTH, HEIGHT = 450, 650
+screen = pygame.display.set_mode(size)
+clock = pygame.time.Clock()
+
+
+def load_image(name, colorkey=None):
+    fullname = os.path.join('data', name)
+    image = pygame.image.load(fullname).convert()
+    if colorkey is not None:
+        if colorkey == -1:
+            colorkey = image.get_at((0, 0))
+        image.set_colorkey(colorkey)
+    else:
+        image = image.convert_alpha()
+    return image
+
+
+def terminate():
+    pygame.quit()
+    sys.exit()
+
+
+def start_screen():
+    sp = []
+    intro_text = ["PySpace", 'Играть']
+    fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
+    screen.blit(fon, (0, 0))
+    font = pygame.font.Font(None, 50)
+    text_coord = [160, -170]
+    for line in intro_text:
+        string_rendered = font.render(line, 1, pygame.Color('white'))
+        intro_rect = string_rendered.get_rect()
+        text_coord[1] += 230
+        intro_rect.top = text_coord[1]
+        text_coord[0] -= 20
+        intro_rect.x = text_coord[0]
+        text_coord[0] += intro_rect.height
+        sp.append(intro_rect)
+        screen.blit(string_rendered, intro_rect)
+    r = sp[1]
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN and r.collidepoint(event.pos):
+                return display_lessons()
+        pygame.display.flip()
+        clock.tick(FPS)
+
 
 all_sprites = pygame.sprite.Group()
+my_group = pygame.sprite.Group()
 lessons_group = pygame.sprite.Group()
+
+
+class MySprite(pygame.sprite.Sprite):
+    def __init__(self, pov, x, y):
+        super().__init__(all_sprites, my_group)
+        if not pov:
+            self.image = load_image('strelki.png', -1)
+        else:
+            self.image = load_image('strelki1.png', -1)
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+
+    def update(self, *args):
+        if self.rect.collidepoint(args[0].pos):
+            return True
+        else:
+            return False
 
 
 class Lesson(pygame.sprite.Sprite):
@@ -21,29 +94,36 @@ class Lesson(pygame.sprite.Sprite):
 
     def update(self, *args):
         if self.rect.collidepoint(args[0].pos):
-            return generate_level(f'level{self.n}.txt')
+            return generate_level(f'level{self.n}.txt'), self.n
         else:
             return False
 
 
-def display_lessons():
-    fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
-    screen.blit(fon, (0, 0))
-    for i in range(3):
-        Lesson(i + 1)
-
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                terminate()
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                for i in lessons_group:
-                    if i.update(event):
-                        return i.update(event)
-
-        all_sprites.draw(screen)
-        pygame.display.flip()
-        clock.tick(FPS)
+def display_lessons(n=None):
+    if n is None:
+        fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
+        screen.blit(fon, (0, 0))
+        for i in range(3):
+            Lesson(i + 1)
+        MySprite(True, 0, 0)
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    terminate()
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    for i in lessons_group:
+                        if i.update(event):
+                            return i.update(event)
+                    for i in my_group:
+                        if i.update(event):
+                            return start_screen()
+            all_sprites.draw(screen)
+            pygame.display.flip()
+            clock.tick(FPS)
+    else:
+        for i in lessons_group:
+            if i.n == n:
+                return generate_level(f'level{n}.txt'), n
 
 
 def generate_level(filename):
@@ -81,5 +161,3 @@ def generate_level(filename):
         random.shuffle(s)
         map.append(''.join(s))
     return map
-
-

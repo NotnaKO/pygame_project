@@ -12,8 +12,8 @@ class Player(pygame.sprite.Sprite):
         self.play = True
         self.damage = 10
         self.health = 100
-        self.speed = PLAYER_SPEED
-        self.ammunition = 10
+        self.speed = PLAYERSPEED
+        self.ammunition = PLAYERAMMUN
 
     def hurt(self, damage):
         self.health -= damage
@@ -46,18 +46,18 @@ class Player(pygame.sprite.Sprite):
             self.deceleration()
 
     def move_right(self):
-        if self.rect.right + PLAYER_SPEED <= WIDTH:
-            self.rect.x += PLAYER_SPEED
+        if self.rect.right + PLAYERSPEED <= WIDTH:
+            self.rect.x += PLAYERSPEED
 
     def move_left(self):
-        if self.rect.x - PLAYER_SPEED >= 0:
-            self.rect.x -= PLAYER_SPEED
+        if self.rect.x - PLAYERSPEED >= 0:
+            self.rect.x -= PLAYERSPEED
 
     def acceleration(self):  # ускорение
-        self.rect.y -= PLAYER_SPEED // 2
+        self.rect.y -= PLAYERSPEED // 2
 
     def deceleration(self):
-        self.rect.y += PLAYER_SPEED // 2
+        self.rect.y += PLAYERSPEED // 2
 
     def shot_e(self):
         if self.ammunition > 0:
@@ -141,9 +141,9 @@ class Meteor(pygame.sprite.Sprite):
         self.move()
         sp_spr = pygame.sprite.spritecollide(self, meteors_group, False)
         spr = None
-        for i in sp_spr:
-            if i is not self:
-                spr = i
+        for i1 in sp_spr:
+            if i1 is not self:
+                spr = i1
         if spr is not None:
             self.change_moving_with_spr(spr)
             spr.change_moving_with_spr(self)
@@ -174,16 +174,16 @@ class Camera:
 
 
 def view_lesson():
-    player = None
-    for i in range(len(levelmap)):
-        for j in range(len(levelmap[i])):
-            if levelmap[i][j] == '-':
+    player1 = None
+    for i1 in range(len(levelmap)):
+        for j in range(len(levelmap[i1])):
+            if levelmap[i1][j] == '-':
                 continue
-            elif levelmap[i][j] == '*':
-                Meteor(i + 1, j)
-            elif levelmap[i][j] == 'P':
-                player = Player(i, j)
-    return player
+            elif levelmap[i1][j] == '*':
+                Meteor(i1 + 1, j)
+            elif levelmap[i1][j] == 'P':
+                player1 = Player(i1, j)
+    return player1
 
 
 class PlayerWeapon(pygame.sprite.Sprite):
@@ -199,7 +199,7 @@ class PlayerWeapon(pygame.sprite.Sprite):
         self.damage = 30
 
     def move(self):
-        self.rect.y -= PLAYER_SPEED * 3
+        self.rect.y -= PLAYERSPEED * 3
 
     def update(self):
         self.move()
@@ -217,7 +217,8 @@ class PlayerWeapon(pygame.sprite.Sprite):
 GAME_SPEED = 200  # дальность расположения метеоров
 COLCOUNT = WIDTH // 9  # Адаптировать к разным уровням
 MYEVENTTYPE = 10
-PLAYER_SPEED = 2
+PLAYERSPEED = 2
+PLAYERAMMUN = 20
 METEORSK = 1  # Урон от столкновения между собой метеоров
 player_group = pygame.sprite.Group()
 meteors_group = pygame.sprite.Group()
@@ -226,8 +227,7 @@ images = {'player': load_image('player.jpg', -1), 'meteor': load_image('meteor.j
           'red_weap': load_image('red_weapon.png', -1)}
 camera = Camera()
 all_sprites = pygame.sprite.Group()
-start_screen()
-levelmap = display_lessons()
+levelmap, n = start_screen()
 while True:
     lessons_group = None
     lw = len(levelmap[0])
@@ -267,7 +267,7 @@ while True:
                     deccel = True
                 if event.key == pygame.K_e and player is not None:
                     player.shot_e()
-                if event.key ==pygame.K_q and player is not None:
+                if event.key == pygame.K_q and player is not None:
                     player.shot_q()
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_a or event.key == pygame.K_LEFT:
@@ -280,13 +280,13 @@ while True:
                     deccel = False
         all_sprites.update()
         if player is None:
-            levelmap = end_screen(False)
+            levelmap, n = end_screen(False, n)
             break
         k = 0
         for i in meteors_group:
             k += 1
         if k == 0:
-            levelmap = end_screen(True)
+            levelmap, n = end_screen(True, n)
             break
         if player is not None:
             camera.update(player)
