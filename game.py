@@ -167,10 +167,36 @@ class Camera:
         self.dy = 0
 
     def apply(self, obj):
-        obj.rect.y += self.dy
+        if type(obj) != Shakla:
+            obj.rect.y += self.dy
 
     def update(self, target):
         self.dy = -(target.rect.y + target.rect.h - HEIGHT)
+
+
+class Shakla(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        super().__init__(all_sprites)
+        self.image = images['shkala']
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+        self.rw = 94
+        self.rh = 13
+        self.color = None
+
+    def draw(self, h):
+        if h >= 70:
+            self.color = pygame.Color('green')
+        elif 30 <= h < 70:
+            self.color = pygame.Color('yellow')
+        else:
+            self.color = pygame.Color('red')
+        pygame.draw.rect(screen, self.color, (self.rect.x, self.rect.y + 12, self.rw * (h / 100), self.rh - 3))
+
+    def update(self):
+        if player is not None:
+            self.draw(player.health)
 
 
 def view_lesson():
@@ -224,7 +250,7 @@ player_group = pygame.sprite.Group()
 meteors_group = pygame.sprite.Group()
 weapons_group = pygame.sprite.Group()
 images = {'player': load_image('player.jpg', -1), 'meteor': load_image('meteor.jpg', -1),
-          'red_weap': load_image('red_weapon.png', -1)}
+          'red_weap': load_image('red_weapon.png', -1), 'shkala': load_image('shkala.png', -1)}
 camera = Camera()
 all_sprites = pygame.sprite.Group()
 levelmap, n = start_screen()
@@ -249,7 +275,7 @@ while True:
     screen.blit(fon, (0, 0))
     righting, lefting = False, False
     accel, deccel = False, False
-
+    sk = Shakla(0, 0)
     while True:
         fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
         screen.blit(fon, (0, 0))
