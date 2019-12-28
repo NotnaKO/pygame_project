@@ -167,7 +167,7 @@ class Camera:
         self.dy = 0
 
     def apply(self, obj):
-        if type(obj) != Shakla:
+        if type(obj) != Shakla and type(obj) != AmCount:
             obj.rect.y += self.dy
 
     def update(self, target):
@@ -200,8 +200,29 @@ class Shakla(pygame.sprite.Sprite):
 
 
 class AmCount(pygame.sprite.Sprite):
-    def __init__(self):
+    def __init__(self, x, y):
         super().__init__(all_sprites)
+        self.image = images['amk']
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+
+    def draw(self, amm):
+        if amm < 0:
+            amm = 0
+        intro_text = [str(amm)]
+        font = pygame.font.Font(None, 20)
+        text_coord = [(self.rect.x + 25, self.rect.y + 8)]
+        for line in range(len(intro_text)):
+            string_rendered = font.render(intro_text[line], 1, pygame.Color('white'))
+            intro_rect = string_rendered.get_rect()
+            intro_rect.top = text_coord[line][1]
+            intro_rect.x = text_coord[line][0]
+            screen.blit(string_rendered, intro_rect)
+
+    def update(self):
+        if player is not None:
+            self.draw(player.ammunition)
 
 
 def view_lesson():
@@ -218,11 +239,11 @@ def view_lesson():
 
 
 class PlayerWeapon(pygame.sprite.Sprite):
-    def __init__(self, n):
+    def __init__(self, n1):
         super().__init__(all_sprites, weapons_group)
         self.image = images['red_weap']
         self.rect = self.image.get_rect()
-        if n == 0:
+        if n1 == 0:
             self.rect.x = player.rect.x + 2
         else:
             self.rect.x = player.rect.right - 2
@@ -255,7 +276,8 @@ player_group = pygame.sprite.Group()
 meteors_group = pygame.sprite.Group()
 weapons_group = pygame.sprite.Group()
 images = {'player': load_image('player.jpg', -1), 'meteor': load_image('meteor.jpg', -1),
-          'red_weap': load_image('red_weapon.png', -1), 'shkala': load_image('shkala.png', -1)}
+          'red_weap': load_image('red_weapon.png', -1), 'shkala': load_image('shkala.png', -1),
+          'amk': load_image('amk.png', -1)}
 camera = Camera()
 all_sprites = pygame.sprite.Group()
 levelmap, n = start_screen()
@@ -281,6 +303,7 @@ while True:
     righting, lefting = False, False
     accel, deccel = False, False
     sk = Shakla(0, 0)
+    am = AmCount(WIDTH - 50, 4)
     while True:
         fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
         screen.blit(fon, (0, 0))
@@ -309,7 +332,6 @@ while True:
                     accel = False
                 if event.key == pygame.K_s or event.key == pygame.K_DOWN:
                     deccel = False
-        all_sprites.update()
         if player is None:
             levelmap, n = end_screen(False, n)
             break
@@ -324,6 +346,7 @@ while True:
             for sprite in all_sprites:
                 camera.apply(sprite)
         all_sprites.draw(screen)
+        all_sprites.update()
         for i in meteors_group:
             i.fun()
         pygame.display.flip()

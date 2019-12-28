@@ -20,7 +20,7 @@ def end_screen(won, n):
     if won:
         text_coord.append((65, 250))
     else:
-        text_coord.append((90, 250))
+        text_coord.append((75, 250))
     for line in range(len(intro_text)):
         string_rendered = font.render(intro_text[line], 1, pygame.Color('white'))
         intro_rect = string_rendered.get_rect()
@@ -45,4 +45,3 @@ def end_screen(won, n):
                     return display_lessons(n)
         pygame.display.flip()
         clock.tick(FPS)
-
