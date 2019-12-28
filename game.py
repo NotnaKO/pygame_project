@@ -144,22 +144,28 @@ class Meteor(pygame.sprite.Sprite):
         for i1 in sp_spr:
             if i1 is not self:
                 spr = i1
-        if spr is not None:
-            self.change_moving_with_spr(spr)
-            spr.change_moving_with_spr(self)
-        if self.rect.right >= WIDTH and not self.chr:
-            self.chr = True
-            self.change_moving()
-        if self.rect.x < 0 and not self.chl:
-            self.chl = True
-            self.change_moving()
-        if self.rect.right < WIDTH:
-            self.chr = False
-        if self.rect.x >= 0:
-            self.chl = False
         if player is not None:
-            if self.rect.y > player.rect.y + player.rect.h:
+            if spr is not None:
+                self.change_moving_with_spr(spr)
+                spr.change_moving_with_spr(self)
+            if player.rect.y - (self.rect.y + self.rect.h) > HEIGHT:
+                if self.rect.right >= WIDTH and not self.chr:
+                    self.chr = True
+                    self.change_moving()
+                if self.rect.x < 0 and not self.chl:
+                    self.chl = True
+                    self.change_moving()
+                if self.rect.right < WIDTH:
+                    self.chr = False
+                if self.rect.x >= 0:
+                    self.chl = False
+            if self.rect.y > player.rect.y + player.rect.h or self.rect.x >= WIDTH or self.rect.right < 0:
                 self.delete()
+
+
+class Enemy(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        super().__init__(all_sprites, enemies_group)
 
 
 class Camera:
@@ -212,7 +218,7 @@ class AmCount(pygame.sprite.Sprite):
             amm = 0
         intro_text = [str(amm)]
         font = pygame.font.Font(None, 20)
-        text_coord = [(self.rect.x + 25, self.rect.y + 8)]
+        text_coord = [(self.rect.x + 22, self.rect.y + 8)]
         for line in range(len(intro_text)):
             string_rendered = font.render(intro_text[line], 1, pygame.Color('white'))
             intro_rect = string_rendered.get_rect()
@@ -267,14 +273,14 @@ class PlayerWeapon(pygame.sprite.Sprite):
 
 
 GAME_SPEED = 200  # дальность расположения метеоров
-COLCOUNT = WIDTH // 9  # Адаптировать к разным уровням
 MYEVENTTYPE = 10
 PLAYERSPEED = 2
 PLAYERAMMUN = 20
-METEORSK = 1  # Урон от столкновения между собой метеоров
+METEORSK = 0  # Урон от столкновения между собой метеоров
 player_group = pygame.sprite.Group()
 meteors_group = pygame.sprite.Group()
 weapons_group = pygame.sprite.Group()
+enemies_group = pygame.sprite.Group()
 images = {'player': load_image('player.jpg', -1), 'meteor': load_image('meteor.jpg', -1),
           'red_weap': load_image('red_weapon.png', -1), 'shkala': load_image('shkala.png', -1),
           'amk': load_image('amk.png', -1)}
@@ -284,6 +290,7 @@ levelmap, n = start_screen()
 while True:
     lessons_group = None
     lw = len(levelmap[0])
+    COLCOUNT = WIDTH // lw
     if lw % 2 != 0:
         pl_xn = (lw - 1) // 2
     else:
@@ -294,7 +301,8 @@ while True:
             sp.append('-')
         else:
             sp.append('P')
-    levelmap.append(''.join(sp).replace('P', '-'))
+    for i in range(5):
+        levelmap.append(''.join(sp).replace('P', '-'))
     levelmap.append(''.join(sp))
 
     player = view_lesson()
