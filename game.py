@@ -166,6 +166,10 @@ class Meteor(pygame.sprite.Sprite):
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__(all_sprites, enemies_group)
+        self.image = images['enemy']
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
 
 
 class Camera:
@@ -173,7 +177,7 @@ class Camera:
         self.dy = 0
 
     def apply(self, obj):
-        if type(obj) != Shakla and type(obj) != AmCount:
+        if type(obj) != Shakla and type(obj) != AmCount and type(obj) != Enemy:
             obj.rect.y += self.dy
 
     def update(self, target):
@@ -283,7 +287,7 @@ weapons_group = pygame.sprite.Group()
 enemies_group = pygame.sprite.Group()
 images = {'player': load_image('player.jpg', -1), 'meteor': load_image('meteor.jpg', -1),
           'red_weap': load_image('red_weapon.png', -1), 'shkala': load_image('shkala.png', -1),
-          'amk': load_image('amk.png', -1)}
+          'amk': load_image('amk.png', -1), 'enemy': load_image('enemy.png', -1)}
 camera = Camera()
 all_sprites = pygame.sprite.Group()
 levelmap, n = start_screen()
