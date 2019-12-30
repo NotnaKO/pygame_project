@@ -137,30 +137,40 @@ class Meteor(pygame.sprite.Sprite):
         self.hurt(1)
         spr.hurt(1)
 
+    def pas_move(self):
+        self.rect.y += 1
+
     def update(self):
-        self.move()
-        sp_spr = pygame.sprite.spritecollide(self, meteors_group, False)
-        spr = None
-        for i1 in sp_spr:
-            if i1 is not self:
-                spr = i1
-        if player is not None:
-            if spr is not None:
-                self.change_moving_with_spr(spr)
-                spr.change_moving_with_spr(self)
-            if player.rect.y - (self.rect.y + self.rect.h) > HEIGHT:
-                if self.rect.right >= WIDTH and not self.chr:
-                    self.chr = True
-                    self.change_moving()
-                if self.rect.x < 0 and not self.chl:
-                    self.chl = True
-                    self.change_moving()
-                if self.rect.right < WIDTH:
-                    self.chr = False
-                if self.rect.x >= 0:
-                    self.chl = False
-            if self.rect.y > player.rect.y + player.rect.h or self.rect.x >= WIDTH or self.rect.right < 0:
-                self.delete()
+        if player.rect.y - (self.rect.y + self.rect.h) > HEIGHT:
+            pas = True
+        else:
+            pas = False
+        if not pas:
+            self.move()
+            sp_spr = pygame.sprite.spritecollide(self, meteors_group, False)
+            spr = None
+            for i1 in sp_spr:
+                if i1 is not self:
+                    spr = i1
+            if player is not None:
+                if spr is not None:
+                    self.change_moving_with_spr(spr)
+                    spr.change_moving_with_spr(self)
+                if player.rect.y - (self.rect.y + self.rect.h) > HEIGHT:
+                    if self.rect.right >= WIDTH and not self.chr:
+                        self.chr = True
+                        self.change_moving()
+                    if self.rect.x < 0 and not self.chl:
+                        self.chl = True
+                        self.change_moving()
+                    if self.rect.right < WIDTH:
+                        self.chr = False
+                    if self.rect.x >= 0:
+                        self.chl = False
+                if self.rect.y > player.rect.y + player.rect.h or self.rect.x >= WIDTH or self.rect.right < 0:
+                    self.delete()
+        else:
+            self.pas_move()
 
 
 class Enemy(pygame.sprite.Sprite):
@@ -285,9 +295,9 @@ player_group = pygame.sprite.Group()
 meteors_group = pygame.sprite.Group()
 weapons_group = pygame.sprite.Group()
 enemies_group = pygame.sprite.Group()
-images = {'player': load_image('player.jpg', -1), 'meteor': load_image('meteor.jpg', -1),
+images = {'player': load_image('player.png', -1), 'meteor': load_image('meteor.jpg', -1),
           'red_weap': load_image('red_weapon.png', -1), 'shkala': load_image('shkala.png', -1),
-          'amk': load_image('amk.png', -1), 'enemy': load_image('enemy.png', -1)}
+          'amk': load_image('amk.png', -1), 'enemy': load_image('enemy.jpg', -1)}
 camera = Camera()
 all_sprites = pygame.sprite.Group()
 levelmap, n = start_screen()
