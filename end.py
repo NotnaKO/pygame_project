@@ -18,7 +18,7 @@ def end_screen(won, n):
     font = pygame.font.Font(None, 50)
     text_coord = [(100, 100), (120, 300), (95, 350)]
     if won:
-        text_coord.append((45, 250))
+        text_coord.append((40, 250))
     else:
         text_coord.append((75, 250))
     for line in range(len(intro_text)):

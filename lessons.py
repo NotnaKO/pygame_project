@@ -127,7 +127,7 @@ def display_lessons(n=None):
 
 
 def generate_level(filename):
-    filename = "data/" + filename
+    filename = "levels/" + filename
     sp = []
     with open(filename, mode='r') as mapfile:
         text = mapfile.readlines()
@@ -145,6 +145,8 @@ def generate_level(filename):
                     elem = typ
                 # m - Метеоры
                 # k - корабли, которые не двигаются
+                # n - корабли которые двигаются
+                # b - босс
                 sp1.extend((k, elem))
             sp.append(sp1)
     map = []

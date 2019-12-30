@@ -76,6 +76,43 @@ class Player(pygame.sprite.Sprite):
         player = None
 
 
+class PlayerWeapon(pygame.sprite.Sprite):
+    def __init__(self, n1):
+        super().__init__(all_sprites, weapons_group)
+        self.image = images['red_weap']
+        self.rect = self.image.get_rect()
+        if n1 == 0:
+            self.rect.x = player.rect.x + 2
+        else:
+            self.rect.x = player.rect.right - 2
+        self.rect.y = player.rect.y
+        self.damage = 30
+
+    def move(self):
+        self.rect.y -= PLAYERSPEED * 3
+
+    def update(self):
+        self.move()
+        if pygame.sprite.spritecollideany(self, meteors_group):
+            spr = pygame.sprite.spritecollideany(self, meteors_group)
+        elif pygame.sprite.spritecollideany(self, enemies_group):
+            spr = pygame.sprite.spritecollideany(self, enemies_group)
+        else:
+            spr = None
+        if spr is not None:
+            spr.hurt(self.damage)
+            self.damage = 0
+            self.delete()
+        if player is None:
+            self.delete()
+        if player.rect.top - HEIGHT > self.rect.top + self.rect.h:
+            self.delete()
+
+    def delete(self):
+        weapons_group.remove(self)
+        all_sprites.remove(self)
+
+
 class Meteor(pygame.sprite.Sprite):
     def __init__(self, y, x):
         super().__init__(meteors_group, all_sprites)
@@ -141,6 +178,8 @@ class Meteor(pygame.sprite.Sprite):
         self.rect.y += 1
 
     def update(self):
+        if player is None:
+            return
         if player.rect.y - (self.rect.y + self.rect.h) > HEIGHT:
             pas = True
         else:
@@ -180,6 +219,124 @@ class Enemy(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
+        self.damage = 30
+        self.health = 60
+        self.danger = 0
+        self.danger_r = 0
+        self.danger_l = 0
+        self.ammunition = 20
+
+    def hurt(self, dam):
+        self.health -= dam
+        if self.health <= 0:
+            self.delete()
+
+    def delete(self):
+        enemies_group.remove(self)
+        all_sprites.remove(self)
+
+    def shot_left(self):
+        if self.ammunition > 0:
+            EnemyWeapon(self, 0)
+        self.ammunition -= 1
+
+    def shot_right(self):
+        if self.ammunition > 0:
+            EnemyWeapon(self, 1)
+        self.ammunition -= 1
+
+    def move_right(self):
+        if self.rect.right + PLAYERSPEED <= WIDTH:
+            self.rect.x += PLAYERSPEED
+
+    def move_left(self):
+        if self.rect.x - PLAYERSPEED >= 0:
+            self.rect.x -= PLAYERSPEED
+
+    def update(self):
+        self.danger = 0
+        self.danger_r = 0
+        self.danger_l = 0
+        for i1 in weapons_group:
+            if type(i1) == PlayerWeapon:
+                if self.rect.x <= i1.rect.right <= self.rect.right:
+                    self.danger += 1
+                if i1.rect.x > self.rect.right:
+                    self.danger_r += 1
+                if i1.rect.right < self.rect.x:
+                    self.danger_l += 1
+        if self.rect.right + 20 >= WIDTH:
+            self.danger_r += 0.5
+        if self.rect.x - 20 < 0:
+            self.danger_l += 0.5
+        for i1 in enemies_group:
+            if i1.rect.collidepoint(self.rect.right + PLAYERSPEED, self.rect.y):
+                self.danger_r += 20
+            if i1.rect.collidepoint(self.rect.x - PLAYERSPEED, self.rect.y):
+                self.danger_l += 20
+        if self.danger:
+            if self.danger_r <= self.danger and self.danger_l > self.danger_r:
+                self.move_right()
+            elif self.danger_l <= self.danger and self.danger_l < self.danger_r:
+                self.move_left()
+            elif self.danger_l == self.danger_r and self.danger_r < self.danger:
+                if WIDTH - self.rect.right > self.rect.x:
+                    self.move_right()
+                else:
+                    self.move_left()
+        if self.rect.x <= player.rect.x <= self.rect.right or self.rect.x <= player.rect.right <= self.rect.right:
+            if self.ammunition >= 16:
+                self.shot_left()
+                self.shot_right()
+            elif self.ammunition >= 12:
+                a = random.choice((0, 1))
+                if a:
+                    self.shot_right()
+                else:
+                    self.shot_left()
+            elif self.ammunition > 0:
+                if self.rect.x <= player.rect.x <= self.rect.right:
+                    self.shot_right()
+                else:
+                    self.shot_left()
+
+    def get_moved(self):
+        if player.rect.top + player.rect.h - self.rect.y < HEIGHT:
+            return False
+        return True
+
+
+class EnemyWeapon(PlayerWeapon):
+    def __init__(self, enemy, n1):
+        super().__init__(n1)
+        self.image = images['gre_weap']
+        self.rect = self.image.get_rect()
+        if n1 == 0:
+            self.rect.x = enemy.rect.x + 10
+        else:
+            self.rect.x = enemy.rect.right - 10
+        self.rect.y = enemy.rect.y
+
+    def move(self):
+        self.rect.y += PLAYERSPEED * 3
+
+    def update(self):
+        self.move()
+        if pygame.sprite.spritecollideany(self, meteors_group):
+            spr = pygame.sprite.spritecollideany(self, meteors_group)
+        elif pygame.sprite.spritecollideany(self, player_group):
+            spr = player
+        else:
+            spr = None
+        if spr is not None:
+            spr.hurt(self.damage)
+            self.damage = 0
+            self.delete()
+        if player is None:
+            self.delete()
+
+        elif self.rect.top > player.rect.y + player.rect.h:
+            self.delete()
 
 
 class Camera:
@@ -189,6 +346,9 @@ class Camera:
     def apply(self, obj):
         if type(obj) != Shakla and type(obj) != AmCount and type(obj) != Enemy:
             obj.rect.y += self.dy
+        elif type(obj) == Enemy:
+            if check():
+                obj.rect.y += self.dy
 
     def update(self, target):
         self.dy = -(target.rect.y + target.rect.h - HEIGHT)
@@ -252,38 +412,20 @@ def view_lesson():
             if levelmap[i1][j] == '-':
                 continue
             elif levelmap[i1][j] == '*':
-                Meteor(i1 + 1, j)
+                Meteor(i1, j)
+            elif levelmap[i1][j] == 'n':
+                Enemy(i1, j)
             elif levelmap[i1][j] == 'P':
                 player1 = Player(i1, j)
     return player1
 
 
-class PlayerWeapon(pygame.sprite.Sprite):
-    def __init__(self, n1):
-        super().__init__(all_sprites, weapons_group)
-        self.image = images['red_weap']
-        self.rect = self.image.get_rect()
-        if n1 == 0:
-            self.rect.x = player.rect.x + 2
-        else:
-            self.rect.x = player.rect.right - 2
-        self.rect.y = player.rect.y
-        self.damage = 30
-
-    def move(self):
-        self.rect.y -= PLAYERSPEED * 3
-
-    def update(self):
-        self.move()
-        if pygame.sprite.spritecollideany(self, meteors_group):
-            spr = pygame.sprite.spritecollideany(self, meteors_group)
-            spr.hurt(self.damage)
-            self.damage = 0
-            self.delete()
-
-    def delete(self):
-        weapons_group.remove(self)
-        all_sprites.remove(self)
+def check():
+    a = False
+    for i1 in enemies_group:
+        if i1.get_moved():
+            a = True
+    return a
 
 
 GAME_SPEED = 200  # дальность расположения метеоров
@@ -297,7 +439,8 @@ weapons_group = pygame.sprite.Group()
 enemies_group = pygame.sprite.Group()
 images = {'player': load_image('player.png', -1), 'meteor': load_image('meteor.jpg', -1),
           'red_weap': load_image('red_weapon.png', -1), 'shkala': load_image('shkala.png', -1),
-          'amk': load_image('amk.png', -1), 'enemy': load_image('enemy.jpg', -1)}
+          'amk': load_image('amk.png', -1), 'enemy': load_image('enemy.png', -1),
+          'gre_weap': load_image('green_weapon.png', -1)}
 camera = Camera()
 all_sprites = pygame.sprite.Group()
 levelmap, n = start_screen()
@@ -359,6 +502,8 @@ while True:
             break
         k = 0
         for i in meteors_group:
+            k += 1
+        for i in enemies_group:
             k += 1
         if k == 0:
             levelmap, n = end_screen(True, n)
