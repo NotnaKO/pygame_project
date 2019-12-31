@@ -89,7 +89,7 @@ class PlayerWeapon(pygame.sprite.Sprite):
         self.damage = 30
 
     def move(self):
-        self.rect.y -= PLAYERSPEED * 3
+        self.rect.y -= PLAYERSPEED * 4
 
     def update(self):
         self.move()
@@ -105,7 +105,7 @@ class PlayerWeapon(pygame.sprite.Sprite):
             self.delete()
         if player is None:
             self.delete()
-        if player.rect.top - HEIGHT > self.rect.top + self.rect.h:
+        elif player.rect.top - HEIGHT > self.rect.top + self.rect.h:
             self.delete()
 
     def delete(self):
@@ -225,6 +225,11 @@ class Enemy(pygame.sprite.Sprite):
         self.danger_r = 0
         self.danger_l = 0
         self.ammunition = 20
+        self.lefting = False
+        self.righting = False
+        self.coord = self.rect.x
+        self.sp = []
+        self.shot = False
 
     def hurt(self, dam):
         self.health -= dam
@@ -236,69 +241,103 @@ class Enemy(pygame.sprite.Sprite):
         all_sprites.remove(self)
 
     def shot_left(self):
-        if self.ammunition > 0:
+        if self.ammunition > 0 and self.shot == 2:
             EnemyWeapon(self, 0)
-        self.ammunition -= 1
+            self.ammunition -= 1
+            self.shot = False
 
     def shot_right(self):
-        if self.ammunition > 0:
+        if self.ammunition > 0 and self.shot == 1:
             EnemyWeapon(self, 1)
-        self.ammunition -= 1
+            self.ammunition -= 1
+            self.shot = False
 
     def move_right(self):
-        if self.rect.right + PLAYERSPEED <= WIDTH:
-            self.rect.x += PLAYERSPEED
+        if self.rect.right + (PLAYERSPEED + 1) <= WIDTH:
+            self.rect.x += PLAYERSPEED + 1
 
     def move_left(self):
-        if self.rect.x - PLAYERSPEED >= 0:
-            self.rect.x -= PLAYERSPEED
+        if self.rect.x - (PLAYERSPEED + 1) >= 0:
+            self.rect.x -= (PLAYERSPEED + 1)
+
+    def shot1(self, n1):
+        if n1 == 1:
+            self.shot_right()
+        else:
+            self.shot_left()
 
     def update(self):
         self.danger = 0
         self.danger_r = 0
         self.danger_l = 0
+        self.sp = []
+        k1 = 0
         for i1 in weapons_group:
             if type(i1) == PlayerWeapon:
-                if self.rect.x <= i1.rect.right <= self.rect.right:
-                    self.danger += 1
-                if i1.rect.x > self.rect.right:
-                    self.danger_r += 1
-                if i1.rect.right < self.rect.x:
-                    self.danger_l += 1
-        if self.rect.right + 20 >= WIDTH:
-            self.danger_r += 0.5
-        if self.rect.x - 20 < 0:
-            self.danger_l += 0.5
-        for i1 in enemies_group:
-            if i1.rect.collidepoint(self.rect.right + PLAYERSPEED, self.rect.y):
-                self.danger_r += 20
-            if i1.rect.collidepoint(self.rect.x - PLAYERSPEED, self.rect.y):
-                self.danger_l += 20
-        if self.danger:
-            if self.danger_r <= self.danger and self.danger_l > self.danger_r:
-                self.move_right()
-            elif self.danger_l <= self.danger and self.danger_l < self.danger_r:
-                self.move_left()
-            elif self.danger_l == self.danger_r and self.danger_r < self.danger:
-                if WIDTH - self.rect.right > self.rect.x:
-                    self.move_right()
-                else:
-                    self.move_left()
+                k1 += 1
+        if not self.righting and not self.lefting:
+            for i1 in weapons_group:
+                if type(i1) == PlayerWeapon:
+                    if self.rect.x <= i1.rect.right <= self.rect.right \
+                            or self.rect.x <= i1.rect.x <= self.rect.right:
+                        if WIDTH - i1.rect.right > i1.rect.x:
+                            self.danger += 1
+                            self.sp.append(i1.rect.right + 10)
+                        else:
+                            self.danger += 1
+                            self.sp.append(i1.rect.x - 10)
+                    if i1.rect.x > self.rect.right:
+                        self.danger_r += 1
+                        self.sp.append(i1.rect.x - 10)
+                    if i1.rect.right < self.rect.x:
+                        self.danger_l += 1
+                        self.sp.append(i1.rect.right + 10)
+                if i1.rect.collidepoint(self.rect.right + PLAYERSPEED, self.rect.y):
+                    self.danger_r += 20
+                if i1.rect.collidepoint(self.rect.x - PLAYERSPEED, self.rect.y):
+                    self.danger_l += 20
+            if self.rect.x < 5:
+                self.danger_l += 5
+            if WIDTH - self.rect.right < 5:
+                self.danger_r += 5
+            if self.danger:
+                if self.danger_r <= self.danger and self.danger_l > self.danger_r:
+                    self.righting = True
+                    self.coord = max(self.sp)
+                elif self.danger_l <= self.danger and self.danger_l < self.danger_r:
+                    self.lefting = True
+                    self.coord = min(self.sp)
+                elif self.danger_l == self.danger_r and self.danger_r < self.danger:
+                    if self.rect.right - max(self.sp) - 7 < min(self.sp) - self.rect.x:
+                        self.righting = True
+                        self.coord = max(self.sp)
+                    else:
+                        self.lefting = True
+                        self.coord = min(self.sp)
+        elif self.righting and self.rect.x < self.coord:
+            self.move_right()
+        elif self.lefting and self.rect.right > self.coord:
+            self.move_left()
+        if self.righting and self.rect.x >= self.coord:
+            self.righting = False
+        elif self.lefting and self.rect.right <= self.coord:
+            self.lefting = False
+
         if self.rect.x <= player.rect.x <= self.rect.right or self.rect.x <= player.rect.right <= self.rect.right:
-            if self.ammunition >= 16:
-                self.shot_left()
-                self.shot_right()
-            elif self.ammunition >= 12:
-                a = random.choice((0, 1))
-                if a:
-                    self.shot_right()
-                else:
-                    self.shot_left()
-            elif self.ammunition > 0:
-                if self.rect.x <= player.rect.x <= self.rect.right:
-                    self.shot_right()
-                else:
-                    self.shot_left()
+            if player.rect.x - (self.rect.top + self.rect.h) < HEIGHT:
+                if player.rect.x < self.rect.right < player.rect.right:
+                    self.shot = 1
+                elif player.rect.x < self.rect.x < player.rect.right:
+                    self.shot = 2
+
+        elif not self.lefting and not self.righting and player.rect.top - self.rect.top - self.rect.h < HEIGHT \
+                and k1 == 0:
+            if abs(player.rect.x - self.rect.right) < abs(player.rect.right - self.rect.x):
+                self.righting = True
+                self.coord = player.rect.x + 3
+            else:
+                self.lefting = True
+                self.coord = player.rect.right - 3
 
     def get_moved(self):
         if player.rect.top + player.rect.h - self.rect.y < HEIGHT:
@@ -430,6 +469,8 @@ def check():
 
 GAME_SPEED = 200  # дальность расположения метеоров
 MYEVENTTYPE = 10
+SHOTTYPE1 = 1
+SHOTTYPE2 = 2
 PLAYERSPEED = 2
 PLAYERAMMUN = 20
 METEORSK = 0  # Урон от столкновения между собой метеоров
@@ -437,6 +478,8 @@ player_group = pygame.sprite.Group()
 meteors_group = pygame.sprite.Group()
 weapons_group = pygame.sprite.Group()
 enemies_group = pygame.sprite.Group()
+pygame.time.set_timer(SHOTTYPE1, 1000)
+pygame.time.set_timer(SHOTTYPE2, 1000)
 images = {'player': load_image('player.png', -1), 'meteor': load_image('meteor.jpg', -1),
           'red_weap': load_image('red_weapon.png', -1), 'shkala': load_image('shkala.png', -1),
           'amk': load_image('amk.png', -1), 'enemy': load_image('enemy.png', -1),
@@ -497,6 +540,14 @@ while True:
                     accel = False
                 if event.key == pygame.K_s or event.key == pygame.K_DOWN:
                     deccel = False
+            if event.type == SHOTTYPE1:
+                for i in enemies_group:
+                    if type(i) is Enemy:
+                        i.shot1(1)
+            if event.type == SHOTTYPE2:
+                for i in enemies_group:
+                    if type(i) is Enemy:
+                        i.shot1(2)
         if player is None:
             levelmap, n = end_screen(False, n)
             break
