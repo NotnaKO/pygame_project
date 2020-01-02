@@ -3,14 +3,14 @@ import pygame
 
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, y, x):
+    def __init__(self, x, y):
         super().__init__(player_group, all_sprites)
         self.image = images['player']
         self.rect = self.image.get_rect()
         self.rect.x = x * COLCOUNT
         self.rect.y = y * GAME_SPEED
         self.play = True
-        self.damage = 10
+        self.damage = 30
         self.health = 100
         self.speed = PLAYERSPEED
         self.ammunition = PLAYERAMMUN
@@ -35,7 +35,7 @@ class Player(pygame.sprite.Sprite):
         if pygame.sprite.spritecollideany(self, meteors_group):
             spr = pygame.sprite.spritecollideany(self, meteors_group)
             spr.hurt(self.damage)
-            self.hurt(self.damage)
+            self.hurt(spr.damage)
         if righting and not lefting:
             self.move_right()
         if lefting and not righting:
@@ -114,14 +114,14 @@ class PlayerWeapon(pygame.sprite.Sprite):
 
 
 class Meteor(pygame.sprite.Sprite):
-    def __init__(self, y, x):
+    def __init__(self, x, y):
         super().__init__(meteors_group, all_sprites)
         self.image = images['meteor']
         self.rect = self.image.get_rect()
         self.rect.y = y * GAME_SPEED
         self.rect.x = x * COLCOUNT
         self.vect = [random.randint(-1, 1), random.randint(0, 1)]
-        self.damage = 50
+        self.damage = 30
         self.chl = False
         self.chr = False
         self.health = 30
@@ -175,7 +175,7 @@ class Meteor(pygame.sprite.Sprite):
         spr.hurt(1)
 
     def pas_move(self):
-        self.rect.y += 1
+        pass
 
     def update(self):
         if player is None:
@@ -217,14 +217,14 @@ class Enemy(pygame.sprite.Sprite):
         super().__init__(all_sprites, enemies_group)
         self.image = images['enemy']
         self.rect = self.image.get_rect()
-        self.rect.x = x
-        self.rect.y = y
+        self.rect.x = x * COLCOUNT
+        self.rect.y = y * GAME_SPEED
         self.damage = 30
         self.health = 60
         self.danger = 0
         self.danger_r = 0
         self.danger_l = 0
-        self.ammunition = 20
+        self.ammunition = 10
         self.lefting = False
         self.righting = False
         self.coord = self.rect.x
@@ -292,10 +292,6 @@ class Enemy(pygame.sprite.Sprite):
                     if i1.rect.right < self.rect.x:
                         self.danger_l += 1
                         self.sp.append(i1.rect.right + 10)
-                if i1.rect.collidepoint(self.rect.right + PLAYERSPEED, self.rect.y):
-                    self.danger_r += 20
-                if i1.rect.collidepoint(self.rect.x - PLAYERSPEED, self.rect.y):
-                    self.danger_l += 20
             if self.rect.x < 5:
                 self.danger_l += 5
             if WIDTH - self.rect.right < 5:
@@ -314,6 +310,10 @@ class Enemy(pygame.sprite.Sprite):
                     else:
                         self.lefting = True
                         self.coord = min(self.sp)
+        if self.coord < 2:
+            self.coord = 2
+        if self.coord + self.rect.w > WIDTH:
+            self.coord = WIDTH - self.rect.w - 2
         elif self.righting and self.rect.x < self.coord:
             self.move_right()
         elif self.lefting and self.rect.right > self.coord:
@@ -322,9 +322,8 @@ class Enemy(pygame.sprite.Sprite):
             self.righting = False
         elif self.lefting and self.rect.right <= self.coord:
             self.lefting = False
-
         if self.rect.x <= player.rect.x <= self.rect.right or self.rect.x <= player.rect.right <= self.rect.right:
-            if player.rect.x - (self.rect.top + self.rect.h) < HEIGHT:
+            if player.rect.top - self.rect.top < HEIGHT:
                 if player.rect.x < self.rect.right < player.rect.right:
                     self.shot = 1
                 elif player.rect.x < self.rect.x < player.rect.right:
@@ -340,9 +339,11 @@ class Enemy(pygame.sprite.Sprite):
                 self.coord = player.rect.right - 3
 
     def get_moved(self):
-        if player.rect.top + player.rect.h - self.rect.y < HEIGHT:
-            return False
-        return True
+        if not player:
+            return
+        if player.rect.top + player.rect.h - self.rect.top < HEIGHT:
+            return True
+        return False
 
 
 class EnemyWeapon(PlayerWeapon):
@@ -386,7 +387,7 @@ class Camera:
         if type(obj) != Shakla and type(obj) != AmCount and type(obj) != Enemy:
             obj.rect.y += self.dy
         elif type(obj) == Enemy:
-            if check():
+            if not check():
                 obj.rect.y += self.dy
 
     def update(self, target):
@@ -451,20 +452,19 @@ def view_lesson():
             if levelmap[i1][j] == '-':
                 continue
             elif levelmap[i1][j] == '*':
-                Meteor(i1, j)
+                Meteor(j, i1)
             elif levelmap[i1][j] == 'n':
-                Enemy(i1, j)
+                Enemy(j, i1)
             elif levelmap[i1][j] == 'P':
-                player1 = Player(i1, j)
+                player1 = Player(j, i1)
     return player1
 
 
 def check():
-    a = False
     for i1 in enemies_group:
         if i1.get_moved():
-            a = True
-    return a
+            return True
+    return False
 
 
 GAME_SPEED = 200  # дальность расположения метеоров
@@ -478,8 +478,8 @@ player_group = pygame.sprite.Group()
 meteors_group = pygame.sprite.Group()
 weapons_group = pygame.sprite.Group()
 enemies_group = pygame.sprite.Group()
-pygame.time.set_timer(SHOTTYPE1, 1000)
-pygame.time.set_timer(SHOTTYPE2, 1000)
+pygame.time.set_timer(SHOTTYPE1, 2000)
+pygame.time.set_timer(SHOTTYPE2, 2000)
 images = {'player': load_image('player.png', -1), 'meteor': load_image('meteor.jpg', -1),
           'red_weap': load_image('red_weapon.png', -1), 'shkala': load_image('shkala.png', -1),
           'amk': load_image('amk.png', -1), 'enemy': load_image('enemy.png', -1),
