@@ -1,4 +1,4 @@
-from end import *
+from lessons import *
 import pygame
 
 
@@ -29,6 +29,12 @@ class Player(pygame.sprite.Sprite):
     def move(self):
         if self.play:
             self.rect.y -= self.speed
+
+    def reamm(self):
+        if self.ammunition < 10:
+            self.ammunition += 1
+        if self.ammunition < 5:
+            self.ammunition += 2
 
     def update(self):  # делает стандартный ход
         self.move()
@@ -240,6 +246,17 @@ class Enemy(pygame.sprite.Sprite):
         enemies_group.remove(self)
         all_sprites.remove(self)
 
+    def heal(self, health):
+        self.health += health
+        if self.health > 60:
+            self.health = 60
+
+    def reamm(self):
+        if self.ammunition < 10:
+            self.ammunition += 1
+        if self.ammunition < 5:
+            self.ammunition += 2
+
     def shot_left(self):
         if self.ammunition > 0 and self.shot == 2:
             EnemyWeapon(self, 0)
@@ -253,12 +270,12 @@ class Enemy(pygame.sprite.Sprite):
             self.shot = False
 
     def move_right(self):
-        if self.rect.right + (PLAYERSPEED + 1) <= WIDTH:
-            self.rect.x += PLAYERSPEED + 1
+        if self.rect.right + ENEMYSPEED <= WIDTH + 5:
+            self.rect.x += ENEMYSPEED
 
     def move_left(self):
-        if self.rect.x - (PLAYERSPEED + 1) >= 0:
-            self.rect.x -= (PLAYERSPEED + 1)
+        if self.rect.x - ENEMYSPEED >= -5:
+            self.rect.x -= ENEMYSPEED
 
     def shot1(self, n1):
         if n1 == 1:
@@ -272,6 +289,8 @@ class Enemy(pygame.sprite.Sprite):
         self.danger_l = 0
         self.sp = []
         k1 = 0
+        if player is None:
+            return
         for i1 in weapons_group:
             if type(i1) == PlayerWeapon:
                 k1 += 1
@@ -310,10 +329,6 @@ class Enemy(pygame.sprite.Sprite):
                     else:
                         self.lefting = True
                         self.coord = min(self.sp)
-        if self.coord < 2:
-            self.coord = 2
-        if self.coord + self.rect.w > WIDTH:
-            self.coord = WIDTH - self.rect.w - 2
         elif self.righting and self.rect.x < self.coord:
             self.move_right()
         elif self.lefting and self.rect.right > self.coord:
@@ -469,17 +484,23 @@ def check():
 
 GAME_SPEED = 200  # дальность расположения метеоров
 MYEVENTTYPE = 10
-SHOTTYPE1 = 1
-SHOTTYPE2 = 2
+SHOTTYPE1 = 21
+SHOTTYPE2 = 22
 PLAYERSPEED = 2
-PLAYERAMMUN = 20
+ENEMYSPEED = PLAYERSPEED * 1.2
+ENEMYLEVEL = 2
+PLAYERAMMUN = 30
+HEALTYPE = 31
+AMMTYPE = 24
 METEORSK = 0  # Урон от столкновения между собой метеоров
 player_group = pygame.sprite.Group()
 meteors_group = pygame.sprite.Group()
 weapons_group = pygame.sprite.Group()
 enemies_group = pygame.sprite.Group()
-pygame.time.set_timer(SHOTTYPE1, 2000)
-pygame.time.set_timer(SHOTTYPE2, 2000)
+pygame.time.set_timer(SHOTTYPE1, (10 - ENEMYLEVEL) * 1000)
+pygame.time.set_timer(SHOTTYPE2, (10 - ENEMYLEVEL) * 1000)
+pygame.time.set_timer(AMMTYPE, 10000)
+pygame.time.set_timer(HEALTYPE, 10000)
 images = {'player': load_image('player.png', -1), 'meteor': load_image('meteor.jpg', -1),
           'red_weap': load_image('red_weapon.png', -1), 'shkala': load_image('shkala.png', -1),
           'amk': load_image('amk.png', -1), 'enemy': load_image('enemy.png', -1),
@@ -548,6 +569,17 @@ while True:
                 for i in enemies_group:
                     if type(i) is Enemy:
                         i.shot1(2)
+            if event.type == HEALTYPE:
+                if player is not None:
+                    player.heal(10)
+                for i in enemies_group:
+                    i.heal(10)
+            if event.type == AMMTYPE:
+                if player is not None:
+                    player.reamm()
+                for i in enemies_group:
+                    i.reamm()
+
         if player is None:
             levelmap, n = end_screen(False, n)
             break
