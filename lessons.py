@@ -3,7 +3,7 @@ import pygame
 import os
 import sys
 
-FPS = 60
+FPS = 30
 pygame.init()
 size = WIDTH, HEIGHT = 450, 650
 screen = pygame.display.set_mode(size)
