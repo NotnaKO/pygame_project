@@ -159,9 +159,24 @@ def generate_level(filename):
             s += k * elem
         if map_width < len(s):
             s = s[:map_width]
-        s += (map_width - len(s)) * '-'
-        random.shuffle(s)
-        map.append(''.join(s))
+        if not s.count('b'):
+            s += (map_width - len(s)) * '-'
+            random.shuffle(s)
+            map.append(''.join(s))
+        else:
+            lw = map_width
+            if lw % 2 != 0:
+                pl_xn = (lw - 1) // 2
+            else:
+                pl_xn = lw // 2
+            sp = []
+            for i1 in range(lw):
+                if i1 != pl_xn:
+                    sp.append('-')
+                else:
+                    sp.append('b')
+            map.append(''.join(sp))
+
     return map
 
 
@@ -173,7 +188,7 @@ def end_screen(won, n):
         intro_text = ["Вы проиграли"]
     intro_text.append("К уровням")
     intro_text.append("Главное меню")
-    if won:
+    if won and n != 3:
         intro_text.append('К следующему уровню')  # Пока не работает, сделаю после 2-3 релиза
     else:
         intro_text.append('Повторить попытку')
@@ -181,7 +196,7 @@ def end_screen(won, n):
     screen.blit(fon, (0, 0))
     font = pygame.font.Font(None, 50)
     text_coord = [(100, 100), (120, 300), (95, 350)]
-    if won:
+    if won and n != 3:
         text_coord.append((30, 250))
     else:
         text_coord.append((75, 250))
@@ -206,7 +221,7 @@ def end_screen(won, n):
                 if r1.collidepoint(event.pos):
                     return start_screen()
                 if r2.collidepoint(event.pos):
-                    if not won:
+                    if not won or n == 3:
                         return display_lessons(n)
                     else:
                         return display_lessons(n + 1)

@@ -9,7 +9,6 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.x = x * COLCOUNT
         self.rect.y = y * GAME_SPEED
-        self.play = True
         self.damage = 30
         self.health = 100
         self.speed = PLAYERSPEED
@@ -18,7 +17,6 @@ class Player(pygame.sprite.Sprite):
     def hurt(self, damage):
         self.health -= damage
         if self.health <= 0:
-            self.play = False
             self.delete()
 
     def heal(self, health):
@@ -27,7 +25,7 @@ class Player(pygame.sprite.Sprite):
             self.health = 100
 
     def move(self):
-        if self.play:
+        if player is not None:
             self.rect.y -= self.speed
 
     def reamm(self):
@@ -105,6 +103,8 @@ class PlayerWeapon(pygame.sprite.Sprite):
             spr = pygame.sprite.spritecollideany(self, meteors_group)
         elif pygame.sprite.spritecollideany(self, enemies_group):
             spr = pygame.sprite.spritecollideany(self, enemies_group)
+        elif boss is not None and pygame.sprite.spritecollideany(self, boss_group):
+            spr = boss
         else:
             spr = None
         if spr is not None:
@@ -128,7 +128,9 @@ class Meteor(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.y = y * GAME_SPEED
         self.rect.x = x * COLCOUNT
-        self.vect = [random.randint(-1, 1), random.randint(0, 1)]
+        self.vect = list()
+        self.vect.append(random.randint(-1, 1))
+        self.vect.append(random.randint(-1, 1))
         self.damage = 30
         self.chl = False
         self.chr = False
@@ -184,8 +186,8 @@ class Meteor(pygame.sprite.Sprite):
                 spr.vect[1] += 1
             if self.vect[1] >= 1:
                 self.vect[1] -= 1
-        self.hurt(1)
-        spr.hurt(1)
+        self.hurt(METEORSK)
+        spr.hurt(METEORSK)
 
     def pas_move(self):
         pass
@@ -264,10 +266,10 @@ class Enemy(pygame.sprite.Sprite):
             self.health = 60
 
     def reamm(self):
-        if self.ammunition < 10:
+        if self.ammunition <= 15:
             self.ammunition += 1
-        if self.ammunition < 5:
-            self.ammunition += 2
+        if self.ammunition < 7:
+            self.ammunition += 1
 
     def shot_left(self):
         if self.ammunition > 0 and self.shot == 2:
@@ -303,6 +305,10 @@ class Enemy(pygame.sprite.Sprite):
         k1 = 0
         if player is None:
             return
+        if pygame.sprite.spritecollideany(self, meteors_group):
+            spr = pygame.sprite.spritecollideany(self, meteors_group)
+            spr.hurt(self.damage)
+            self.hurt(spr.damage)
         for i1 in weapons_group:
             if type(i1) == PlayerWeapon:
                 k1 += 1
@@ -379,26 +385,6 @@ class Enemy(pygame.sprite.Sprite):
         return False
 
 
-class Boss(pygame.sprite.Sprite):
-    def __init__(self, x, y):
-        super().__init__(all_sprites, boss_group)
-        self.image = images['boss']
-        self.rect = self.image.get_rect()
-        self.rect.x = x
-        self.rect.y = y
-        self.health = 500
-        self.damage = 30
-
-    def hurt(self, damage):
-        self.health -= damage
-        if self.health <= 0:
-            self.delete()
-
-    def delete(self):  # Пока так, но позже с анимацией
-        meteors_group.remove(self)
-        all_sprites.remove(self)
-
-
 class EnemyWeapon(PlayerWeapon):
     def __init__(self, enemy, n1):
         super().__init__(n1)
@@ -427,8 +413,153 @@ class EnemyWeapon(PlayerWeapon):
             self.delete()
         if player is None:
             self.delete()
-
         elif self.rect.top > player.rect.y + player.rect.h:
+            self.delete()
+
+
+class Boss(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        super().__init__(all_sprites, boss_group)
+        self.image = images['boss']
+        self.rect = self.image.get_rect()
+        self.rect.x = x * COLCOUNT
+        self.rect.y = y * GAME_SPEED
+        self.health = 500
+        self.shield_health = 0
+        self.damage = 30
+        self.n = 0
+        self.shield_rect = None
+        self.circle = 0
+        self.max_radius = self.rect.h // 2 + 2
+        self.circle_radius = 3
+        pygame.time.set_timer(SHIELDSTART, 5000)
+        pygame.time.set_timer(SHIELDEND, 10000)
+        pygame.time.set_timer(BOSSSHOT, 2500)
+        self.start_shield()
+
+    def hurt(self, damage):
+        if damage <= 0:
+            return
+        if self.shield_health > damage:
+            self.shield_health -= damage
+        elif self.shield_health == damage:
+            self.shield_health -= damage
+            self.end_shield()
+        else:
+            damage -= self.shield_health
+            self.shield_health = 0
+            self.end_shield()
+            self.health -= damage
+            if self.health <= 0:
+                self.delete()
+
+    def delete(self):
+        global boss  # Пока так, но позже с анимацией
+        boss_group.remove(self)
+        all_sprites.remove(self)
+        boss = None
+
+    def inter_shot(self):
+        BossWeapon(self.rect.x, self.rect.top + self.rect.h // 2, 0)
+        BossWeapon(self.rect.right, self.rect.top + self.rect.h // 2, 0)
+        BossWeapon(self.rect.x + self.rect.w // 4, self.rect.top + self.rect.h // 2, 0)
+        BossWeapon(self.rect.right - self.rect.w // 4, self.rect.top + self.rect.h // 2, 0)
+
+    def sq_shot(self, n1):
+        if n1 == 1:
+            for i1 in range(60, -60, -30):
+                BossWeapon(self.rect.x, self.rect.top + self.rect.h, i1)
+        else:
+            for i1 in range(45, -45, -18):
+                BossWeapon(self.rect.x, self.rect.top + self.rect.h, i1)
+
+    def out_shot(self):  # Нужно подобрать правильные углы
+        BossWeapon(self.rect.x, self.rect.top + self.rect.h, 50)
+        BossWeapon(self.rect.x, self.rect.top + self.rect.h, 90)
+        BossWeapon(self.rect.right, self.rect.top + self.rect.h, -50)
+        BossWeapon(self.rect.right, self.rect.top + self.rect.h, -60)
+
+    def change_circle_radius(self):
+        if self.circle == 1:
+            self.circle_radius += 2
+        elif self.circle == -1:
+            self.circle_radius -= 2
+        if self.circle_radius > 2:
+            self.shield_rect = pygame.draw.circle(screen, pygame.color.Color('blue'),
+                                                  (self.rect.x + self.rect.w // 2, self.rect.y + self.rect.h // 2),
+                                                  self.circle_radius, 2)
+
+    def start_shield(self):
+        if self.circle_radius < self.max_radius:
+            self.circle = 1
+            self.shield_health = 60
+
+    def end_shield(self):
+        self.circle = -1
+        self.shield_health = 0
+
+    def shot(self):
+        if self.rect.x <= player.rect.x - 10 <= self.rect.right \
+                or self.rect.x <= player.rect.right + 10 <= self.rect.right:
+            self.inter_shot()
+        elif self.rect.x > player.rect.right + 10 or self.rect.right < player.rect.right - 10:
+            self.out_shot()
+        else:
+            self.sq_shot(self.n)
+            if self.n == 1:
+                self.n = 0
+            else:
+                self.n = 1
+
+    def chrad(self):
+        if (self.circle_radius < 2 and self.circle == -1) or (
+                self.circle_radius > self.max_radius - 2 and self.circle == 1):
+            self.circle = 0
+        self.change_circle_radius()
+
+    def get_moved(self):
+        if not player:
+            return
+        if player.rect.top + player.rect.h - self.rect.top < HEIGHT:
+            return True
+        return False
+
+    def update(self):
+        self.chrad()
+
+
+class BossWeapon(PlayerWeapon):
+    def __init__(self, x, y, angle):
+        super().__init__(0)
+        self.image = pygame.transform.rotate(images['gre_weap'], -angle)
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+        self.vect = pygame.math.Vector2()
+        self.vect.x = 0
+        self.vect.y = PLAYERSPEED
+        self.damage = 10
+        self.vect = self.vect.rotate(angle)
+
+    def move(self):
+        self.rect.x += self.vect.x
+        self.rect.y += self.vect.y
+
+    def update(self):
+        self.move()
+        if pygame.sprite.spritecollideany(self, meteors_group):
+            spr = pygame.sprite.spritecollideany(self, meteors_group)
+        elif pygame.sprite.spritecollideany(self, player_group):
+            spr = player
+        else:
+            spr = None
+        if spr is not None:
+            spr.hurt(self.damage)
+            self.damage = 0
+            self.delete()
+        if player is None:
+            self.delete()
+        elif (self.rect.top > player.rect.y + player.rect.h) or (self.rect.right < 0) or (self.rect.x > WIDTH):
             self.delete()
 
 
@@ -437,7 +568,8 @@ class Camera:
         self.dy = 0
 
     def apply(self, obj):
-        if type(obj) != Shakla and type(obj) != AmCount and type(obj) != Enemy and type(obj) != Meteor:
+        if type(obj) != Shakla and type(obj) != AmCount and type(obj) != Enemy and type(obj) != Meteor \
+                and type(obj) != Boss:
             obj.rect.y += self.dy
         elif type(obj) == Enemy:
             if not check():
@@ -445,6 +577,10 @@ class Camera:
         elif type(obj) == Meteor:
             if (check() and obj.check()) or not check():
                 obj.rect.y += self.dy
+        elif type(obj) == Boss:
+            if boss is not None:
+                if not obj.get_moved():
+                    obj.rect.y += self.dy
 
     def update(self, target):
         self.dy = -(target.rect.y + target.rect.h - HEIGHT)
@@ -513,6 +649,8 @@ def view_lesson():
                 Enemy(j, i1)
             elif levelmap[i1][j] == 'P':
                 player1 = Player(j, i1)
+            elif levelmap[i1][j] == 'b':
+                Boss(j, i1)
     return player1
 
 
@@ -532,12 +670,16 @@ ENEMYSPEED = PLAYERSPEED * 1.3
 ENEMYLEVEL = 7
 PLAYERAMMUN = 30
 HEALTYPE = 31
-AMMTYPE = 24
-METEORSK = 1  # Урон от столкновения между собой метеоров  Не Забудь!!!!!
+AMMTYPE = 11
+SHIELDSTART = 25
+SHIELDEND = 26
+BOSSSHOT = 27
+PLUSRADIUS = 28
+METEORSK = 1  # Урон от столкновения между собой метеоров
 images = {'player': load_image('player.png', -1), 'meteor': load_image('meteor.jpg', -1),
           'red_weap': load_image('red_weapon.png', -1), 'shkala': load_image('shkala.png', -1),
           'amk': load_image('amk.png', -1), 'enemy': load_image('enemy.png', -1),
-          'gre_weap': load_image('green_weapon.png', -1), 'boss': load_image('boss.jpg', -1)}
+          'gre_weap': load_image('green_weapon.png', -1), 'boss': load_image('boss.png', -1)}
 levelmap, n = start_screen()
 while True:
     player_group = pygame.sprite.Group()
@@ -545,10 +687,11 @@ while True:
     weapons_group = pygame.sprite.Group()
     enemies_group = pygame.sprite.Group()
     boss_group = pygame.sprite.Group()
+    boss = None
     all_sprites = pygame.sprite.Group()
     pygame.time.set_timer(SHOTTYPE1, (10 - ENEMYLEVEL) * 1000)
     pygame.time.set_timer(SHOTTYPE2, (10 - ENEMYLEVEL) * 1000)
-    pygame.time.set_timer(AMMTYPE, 10000)
+    pygame.time.set_timer(11, 1500)
     pygame.time.set_timer(HEALTYPE, 10000)
     fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
@@ -574,13 +717,15 @@ while True:
     player = view_lesson()
     righting, lefting = False, False
     accel, deccel = False, False
+    for i in boss_group:
+        boss = i
     while True:
         fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
         screen.blit(fon, (0, 0))
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
-            if event.type == pygame.KEYDOWN:
+            elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_a or event.key == pygame.K_LEFT:
                     lefting = True
                 if event.key == pygame.K_d or event.key == pygame.K_RIGHT:
@@ -593,7 +738,7 @@ while True:
                     player.shot_e()
                 if event.key == pygame.K_q and player is not None:
                     player.shot_q()
-            if event.type == pygame.KEYUP:
+            elif event.type == pygame.KEYUP:
                 if event.key == pygame.K_a or event.key == pygame.K_LEFT:
                     lefting = False
                 if event.key == pygame.K_d or event.key == pygame.K_RIGHT:
@@ -602,25 +747,33 @@ while True:
                     accel = False
                 if event.key == pygame.K_s or event.key == pygame.K_DOWN:
                     deccel = False
-            if event.type == SHOTTYPE1:
+            elif event.type == SHOTTYPE1:
                 for i in enemies_group:
                     if type(i) is Enemy:
                         i.shot1(1)
-            if event.type == SHOTTYPE2:
+            elif event.type == SHOTTYPE2:
                 for i in enemies_group:
                     if type(i) is Enemy:
                         i.shot1(2)
-            if event.type == HEALTYPE:
+            elif event.type == HEALTYPE:
                 if player is not None:
                     player.heal(10)
                 for i in enemies_group:
                     i.heal(10)
-            if event.type == AMMTYPE:
+            elif event.type == 11:
                 if player is not None:
                     player.reamm()
                 for i in enemies_group:
                     i.reamm()
-
+            if boss is not None:
+                if event.type == SHIELDSTART:
+                    boss.start_shield()
+                elif event.type == SHIELDEND:
+                    boss.end_shield()
+                elif event.type == BOSSSHOT:
+                    boss.shot()
+                elif event.type == PLUSRADIUS:
+                    boss.chrad()
         if player is None:
             levelmap, n = end_screen(False, n)
             break
@@ -629,7 +782,7 @@ while True:
             k += 1
         for i in enemies_group:
             k += 1
-        if k == 0:
+        if k == 0 and boss is None:
             levelmap, n = end_screen(True, n)
             break
         if player is not None:
