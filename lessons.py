@@ -3,12 +3,6 @@ import pygame
 import os
 import sys
 
-FPS = 30
-pygame.init()
-size = WIDTH, HEIGHT = 450, 650
-screen = pygame.display.set_mode(size)
-clock = pygame.time.Clock()
-
 
 def load_image(name, colorkey=None):
     fullname = os.path.join('data', name)
@@ -22,6 +16,23 @@ def load_image(name, colorkey=None):
     return image
 
 
+FPS = 30
+pygame.init()
+size = WIDTH, HEIGHT = 450, 650
+screen = pygame.display.set_mode(size)
+clock = pygame.time.Clock()
+images = {'player': load_image('player.png', -1), 'meteor0': load_image('meteor.png', -1),
+          'meteor90': load_image('meteor90.png', -1), 'meteor180': load_image('meteor180.png', -1),
+          'meteor270': load_image('meteor270.png', -1),
+          'red_weap': load_image('red_weapon.png', -1), 'shkala': load_image('shkala.png', -1),
+          'amk': load_image('amk.png', -1), 'enemy': load_image('enemy.png', -1),
+          'gre_weap': load_image('green_weapon.png', -1), 'boss': load_image('boss.png', -1),
+          'osk1': load_image("oskol1.png", -1), 'osk2': load_image("oskol2.png", -1),
+          'osk3': load_image("oskol3.png", -1), 'fon1': load_image('fon.jpg'), 'fon2': load_image('fon2.jpg'),
+          'fon3': load_image('fon3.jpg'), 'strelki': load_image('strelki.png', -1),
+          'sterki1': load_image('strelki1.png', -1)}
+
+
 def terminate():
     pygame.quit()
     sys.exit()
@@ -30,8 +41,9 @@ def terminate():
 def start_screen():
     sp = []
     intro_text = ["PySpace", 'Играть']
-    fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
-    screen.blit(fon, (0, 0))
+    screen.fill((0, 0, 0))
+    Fon(-400, -200, fon_group, 1)
+    fon_group.draw(screen)
     font = pygame.font.Font(None, 50)
     text_coord = [160, -170]
     for line in intro_text:
@@ -58,15 +70,16 @@ def start_screen():
 all_sprites = pygame.sprite.Group()
 my_group = pygame.sprite.Group()
 lessons_group = pygame.sprite.Group()
+fon_group = pygame.sprite.Group()
 
 
 class MySprite(pygame.sprite.Sprite):
     def __init__(self, pov, x, y):
         super().__init__(all_sprites, my_group)
         if not pov:
-            self.image = load_image('strelki.png', -1)
+            self.image = images['strelki']
         else:
-            self.image = load_image('strelki1.png', -1)
+            self.image = images['sterki1']
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
@@ -101,8 +114,8 @@ class Lesson(pygame.sprite.Sprite):
 
 def display_lessons(n=None):
     if n is None:
-        fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
-        screen.blit(fon, (0, 0))
+        screen.fill((0, 0, 0))
+        Fon(-1450, -200, fon_group, 2)
         for i in range(3):
             Lesson(i + 1)
         MySprite(True, 0, 0)
@@ -149,7 +162,7 @@ def generate_level(filename):
                 # b - босс
                 sp1.extend((k, elem))
             sp.append(sp1)
-    map = []
+    map1 = []
     sp = sp[::-1]
     for i in range(len(sp)):
         s = []
@@ -162,7 +175,7 @@ def generate_level(filename):
         if not s.count('b'):
             s += (map_width - len(s)) * '-'
             random.shuffle(s)
-            map.append(''.join(s))
+            map1.append(''.join(s))
         else:
             lw = map_width
             if lw % 2 != 0:
@@ -175,9 +188,27 @@ def generate_level(filename):
                     sp1.append('-')
                 else:
                     sp1.append('b')
-            map.append(''.join(sp1))
+            map1.append(''.join(sp1))
 
-    return map
+    return map1
+
+
+class Fon(pygame.sprite.Sprite):
+    def __init__(self, x, y, fon_gr, n):
+        super().__init__(all_sprites, fon_gr)
+        self.image = images[f'fon{n}']
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+        self.n = 0
+
+    def move(self):
+        self.rect.y += 0.1
+
+    def update(self):
+        self.n += 1
+        if self.n % 2 == 0:
+            self.move()
 
 
 def end_screen(won, n):
@@ -192,8 +223,9 @@ def end_screen(won, n):
         intro_text.append('К следующему уровню')  # Пока не работает, сделаю после 2-3 релиза
     else:
         intro_text.append('Повторить попытку')
-    fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
-    screen.blit(fon, (0, 0))
+    screen.fill((0, 0, 0))
+    Fon(-400, -200, fon_group, 3)
+    fon_group.draw(screen)
     font = pygame.font.Font(None, 50)
     text_coord = [(100, 100), (120, 300), (95, 350)]
     if won and n != 3:

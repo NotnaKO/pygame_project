@@ -124,7 +124,8 @@ class PlayerWeapon(pygame.sprite.Sprite):
 class Meteor(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__(meteors_group, all_sprites)
-        self.image = images['meteor']
+        grad = random.choice(('0', '90', '180', '270'))
+        self.image = images[f"meteor{grad}"]
         self.rect = self.image.get_rect()
         self.rect.y = y * GAME_SPEED
         self.rect.x = x * COLCOUNT
@@ -149,6 +150,12 @@ class Meteor(pygame.sprite.Sprite):
     def delete(self):  # Пока так, но позже с анимацией
         meteors_group.remove(self)
         all_sprites.remove(self)
+        particle_count = 3
+        # возможные скорости
+        numbers = range(-5, 6)
+        for _ in range(particle_count):
+            Oskol((self.rect.x + self.rect.w // 2, self.rect.y + self.rect.h // 2), random.choice(numbers),
+                  random.choice(numbers))
 
     def fun(self):
         self.a = False
@@ -225,6 +232,33 @@ class Meteor(pygame.sprite.Sprite):
                     self.delete()
         else:
             self.pas_move()
+
+
+class Oskol(pygame.sprite.Sprite):
+    fire = [images['osk1'], images['osk2'], images['osk3']]
+    for i in range(len(fire)):
+        for scale in (20, 17, 22):
+            fire.append(pygame.transform.scale(fire[i], (scale, scale)))
+
+    def __init__(self, pos, dx, dy):
+        super().__init__(all_sprites, osk_group)
+        self.image = random.choice(self.fire)
+        self.rect = self.image.get_rect()
+        self.velocity = [dx, dy]
+        self.rect.x, self.rect.y = pos
+        self.gravity = GRAVITY
+        self.n = 0
+
+    def update(self):
+        self.n += 1
+        self.velocity[1] += self.gravity
+        self.rect.x += self.velocity[0]
+        self.rect.y += self.velocity[1]
+        if player is None:
+            return
+        if self.rect.y > player.rect.y + player.rect.h or self.rect.x >= WIDTH or self.rect.right < 0 \
+                or self.n > FPS * 2:
+            self.kill()
 
 
 class Enemy(pygame.sprite.Sprite):
@@ -397,7 +431,7 @@ class EnemyWeapon(PlayerWeapon):
         self.rect.y = enemy.rect.y
 
     def move(self):
-        self.rect.y += PLAYERSPEED * 3
+        self.rect.y += PLAYERSPEED * 2
 
     def update(self):
         self.move()
@@ -596,7 +630,7 @@ class Camera:
 
 class Shakla(pygame.sprite.Sprite):
     def __init__(self, x, y):
-        super().__init__(all_sprites)
+        super().__init__(all_sprites, slu_group)
         self.image = images['shkala']
         self.rect = self.image.get_rect()
         self.rect.x = x
@@ -621,7 +655,7 @@ class Shakla(pygame.sprite.Sprite):
 
 class AmCount(pygame.sprite.Sprite):
     def __init__(self, x, y):
-        super().__init__(all_sprites)
+        super().__init__(all_sprites, slu_group)
         self.image = images['amk']
         self.rect = self.image.get_rect()
         self.rect.x = x
@@ -679,6 +713,8 @@ MYEVENTTYPE = 10
 SHOTTYPE1 = 21
 SHOTTYPE2 = 22
 PLAYERSPEED = 5
+GRAVITY = 0
+KILLTYPE = 14
 ENEMYSPEED = PLAYERSPEED * 1.3
 ENEMYLEVEL = 7
 PLAYERAMMUN = 30
@@ -689,25 +725,27 @@ SHIELDEND = 26
 BOSSSHOT = 27
 PLUSRADIUS = 28
 METEORSK = 1  # Урон от столкновения между собой метеоров
-images = {'player': load_image('player.png', -1), 'meteor': load_image('meteor.jpg', -1),
-          'red_weap': load_image('red_weapon.png', -1), 'shkala': load_image('shkala.png', -1),
-          'amk': load_image('amk.png', -1), 'enemy': load_image('enemy.png', -1),
-          'gre_weap': load_image('green_weapon.png', -1), 'boss': load_image('boss.png', -1)}
 levelmap, n = start_screen()
 while True:
+    osk_group = pygame.sprite.Group()
     player_group = pygame.sprite.Group()
     meteors_group = pygame.sprite.Group()
     weapons_group = pygame.sprite.Group()
     enemies_group = pygame.sprite.Group()
     boss_group = pygame.sprite.Group()
+    slu_group = pygame.sprite.Group()
+    fon_group = pygame.sprite.Group()
     boss = None
     all_sprites = pygame.sprite.Group()
+    sp_sprites = [fon_group, osk_group, weapons_group, meteors_group, enemies_group, player_group, boss_group,
+                  slu_group]
     pygame.time.set_timer(SHOTTYPE1, (10 - ENEMYLEVEL) * 1000)
     pygame.time.set_timer(SHOTTYPE2, (10 - ENEMYLEVEL) * 1000)
-    pygame.time.set_timer(11, 1500)
+    pygame.time.set_timer(AMMTYPE, 2500)
     pygame.time.set_timer(HEALTYPE, 10000)
-    fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
-    screen.blit(fon, (0, 0))
+    screen.fill((0, 0, 0))
+    n2 = random.randint(1, 3)
+    Fon(-200, -420, fon_group, n2)
     camera = Camera()
     sk = Shakla(0, 0)
     am = AmCount(WIDTH - 50, 4)
@@ -733,8 +771,7 @@ while True:
     for i in boss_group:
         boss = i
     while True:
-        fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
-        screen.blit(fon, (0, 0))
+        screen.fill((0, 0, 0))
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
@@ -802,8 +839,10 @@ while True:
             camera.update(player)
             for sprite in all_sprites:
                 camera.apply(sprite)
-        all_sprites.draw(screen)
+        for i in sp_sprites:
+            i.draw(screen)
         all_sprites.update()
+        fon_group.update()
         for i in meteors_group:
             i.fun()
         pygame.display.flip()
