@@ -169,13 +169,13 @@ def generate_level(filename):
                 pl_xn = (lw - 1) // 2
             else:
                 pl_xn = lw // 2
-            sp = []
+            sp1 = []
             for i1 in range(lw):
                 if i1 != pl_xn:
-                    sp.append('-')
+                    sp1.append('-')
                 else:
-                    sp.append('b')
-            map.append(''.join(sp))
+                    sp1.append('b')
+            map.append(''.join(sp1))
 
     return map
 

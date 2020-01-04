@@ -131,7 +131,7 @@ class Meteor(pygame.sprite.Sprite):
         self.vect = list()
         self.vect.append(random.randint(-1, 1))
         self.vect.append(random.randint(-1, 1))
-        self.damage = 30
+        self.damage = 20
         self.chl = False
         self.chr = False
         self.health = 30
@@ -422,19 +422,19 @@ class Boss(pygame.sprite.Sprite):
         super().__init__(all_sprites, boss_group)
         self.image = images['boss']
         self.rect = self.image.get_rect()
-        self.rect.x = x * COLCOUNT
+        self.rect.x = x * COLCOUNT - 5
         self.rect.y = y * GAME_SPEED
         self.health = 500
         self.shield_health = 0
-        self.damage = 30
+        self.damage = 20
         self.n = 0
         self.shield_rect = None
         self.circle = 0
-        self.max_radius = self.rect.h // 2 + 2
+        self.max_radius = self.rect.h // 2 + 5
         self.circle_radius = 3
         pygame.time.set_timer(SHIELDSTART, 5000)
         pygame.time.set_timer(SHIELDEND, 10000)
-        pygame.time.set_timer(BOSSSHOT, 2500)
+        pygame.time.set_timer(BOSSSHOT, 2200)
         self.start_shield()
 
     def hurt(self, damage):
@@ -460,60 +460,65 @@ class Boss(pygame.sprite.Sprite):
         boss = None
 
     def inter_shot(self):
-        BossWeapon(self.rect.x, self.rect.top + self.rect.h // 2, 0)
-        BossWeapon(self.rect.right, self.rect.top + self.rect.h // 2, 0)
-        BossWeapon(self.rect.x + self.rect.w // 4, self.rect.top + self.rect.h // 2, 0)
-        BossWeapon(self.rect.right - self.rect.w // 4, self.rect.top + self.rect.h // 2, 0)
+        BossWeapon(self.rect.x, self.rect.top + self.rect.h, 0)
+        BossWeapon(self.rect.right, self.rect.top + self.rect.h, 0)
+        BossWeapon(self.rect.x + self.rect.w // 4, self.rect.top + self.rect.h, 0)
+        BossWeapon(self.rect.right - self.rect.w // 4, self.rect.top + self.rect.h, 0)
+        BossWeapon(self.rect.right - self.rect.w // 2, self.rect.top + self.rect.h, 0)
 
-    def sq_shot(self, n1):
-        if n1 == 1:
-            for i1 in range(60, -60, -30):
-                BossWeapon(self.rect.x, self.rect.top + self.rect.h, i1)
-        else:
-            for i1 in range(45, -45, -18):
-                BossWeapon(self.rect.x, self.rect.top + self.rect.h, i1)
+    def sq_shot(self):
+        for i1 in range(25, -26, -10):
+            BossWeapon(self.rect.x + self.rect.w // 2 - 5, self.rect.top + self.rect.h, i1)
 
     def out_shot(self):  # Нужно подобрать правильные углы
-        BossWeapon(self.rect.x, self.rect.top + self.rect.h, 50)
-        BossWeapon(self.rect.x, self.rect.top + self.rect.h, 90)
-        BossWeapon(self.rect.right, self.rect.top + self.rect.h, -50)
-        BossWeapon(self.rect.right, self.rect.top + self.rect.h, -60)
+        BossWeapon(self.rect.x, self.rect.top + self.rect.h, 20)
+        BossWeapon(self.rect.x, self.rect.top + self.rect.h, 15)
+        BossWeapon(self.rect.x, self.rect.top + self.rect.h, 10)
+        BossWeapon(self.rect.right, self.rect.top + self.rect.h, -20)
+        BossWeapon(self.rect.right, self.rect.top + self.rect.h, -15)
+        BossWeapon(self.rect.right, self.rect.top + self.rect.h, -10)
 
     def change_circle_radius(self):
         if self.circle == 1:
             self.circle_radius += 2
         elif self.circle == -1:
             self.circle_radius -= 2
-        if self.circle_radius > 2:
-            self.shield_rect = pygame.draw.circle(screen, pygame.color.Color('blue'),
-                                                  (self.rect.x + self.rect.w // 2, self.rect.y + self.rect.h // 2),
-                                                  self.circle_radius, 2)
+        if self.circle_radius > 5:
+            color = pygame.color.Color('black')
+            color.r = 66
+            color.b = 151
+            color.g = 138
+            color.a = 100
+            self.shield_rect = pygame.draw.circle(screen, color,
+                                                  (self.rect.x + self.rect.w // 2,
+                                                   self.rect.y + self.rect.h // 2),
+                                                  self.circle_radius, 5)
 
     def start_shield(self):
         if self.circle_radius < self.max_radius:
             self.circle = 1
-            self.shield_health = 60
+            self.shield_health = 90
 
     def end_shield(self):
         self.circle = -1
         self.shield_health = 0
 
     def shot(self):
-        if self.rect.x <= player.rect.x - 10 <= self.rect.right \
-                or self.rect.x <= player.rect.right + 10 <= self.rect.right:
+        if not self.get_moved():
+            return
+        if self.rect.x <= player.rect.x - 8 <= self.rect.right \
+                or self.rect.x <= player.rect.right + 8 <= self.rect.right:
             self.inter_shot()
-        elif self.rect.x > player.rect.right + 10 or self.rect.right < player.rect.right - 10:
-            self.out_shot()
         else:
-            self.sq_shot(self.n)
-            if self.n == 1:
-                self.n = 0
+            self.n = random.randint(0, 1)
+            if self.n != 1:
+                self.sq_shot()
             else:
-                self.n = 1
+                self.out_shot()
 
     def chrad(self):
-        if (self.circle_radius < 2 and self.circle == -1) or (
-                self.circle_radius > self.max_radius - 2 and self.circle == 1):
+        if (self.circle_radius < 5 and self.circle == -1) or (
+                self.circle_radius > self.max_radius - 5 and self.circle == 1):
             self.circle = 0
         self.change_circle_radius()
 
@@ -537,9 +542,12 @@ class BossWeapon(PlayerWeapon):
         self.rect.y = y
         self.vect = pygame.math.Vector2()
         self.vect.x = 0
-        self.vect.y = PLAYERSPEED
-        self.damage = 10
-        self.vect = self.vect.rotate(angle)
+        self.vect.y = PLAYERSPEED * 2
+        self.damage = 20
+        vect1 = pygame.math.Vector2()
+        vect1.x = 0
+        vect1.y = PLAYERSPEED
+        self.vect = find_vect(vect1, self.vect.rotate(angle))
 
     def move(self):
         self.rect.x += self.vect.x
@@ -579,7 +587,7 @@ class Camera:
                 obj.rect.y += self.dy
         elif type(obj) == Boss:
             if boss is not None:
-                if not obj.get_moved():
+                if not obj.get_moved() and not check():
                     obj.rect.y += self.dy
 
     def update(self, target):
@@ -659,6 +667,11 @@ def check():
         if i1.get_moved():
             return True
     return False
+
+
+def find_vect(vect1, vect2):  # Вектор 2 - тот который хочешь получить
+    vect3 = -vect1 + vect2
+    return vect3
 
 
 GAME_SPEED = 200  # дальность расположения метеоров
