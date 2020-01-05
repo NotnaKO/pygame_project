@@ -69,14 +69,20 @@ class Player(pygame.sprite.Sprite):
         if self.ammunition > 0:
             PlayerWeapon(1)
         self.ammunition -= 1
+        s = sounds['player fire']
+        s.play()
 
     def shot_q(self):
         if self.ammunition > 0:
             PlayerWeapon(0)
         self.ammunition -= 1
+        s = sounds['player fire']
+        s.play()
 
     def delete(self):
         global player
+        s = sounds['player explode']
+        s.play()
         player_group.remove(self)
         all_sprites.remove(self)
         player = None
@@ -143,9 +149,10 @@ class Meteor(pygame.sprite.Sprite):
         self.rect.y += self.vect[1]
 
     def hurt(self, damage):
-        self.health -= damage
-        if self.health <= 0:
-            self.delete()
+        if self.check():
+            self.health -= damage
+            if self.health <= 0:
+                self.delete()
 
     def delete(self):  # Пока так, но позже с анимацией
         meteors_group.remove(self)
@@ -229,7 +236,7 @@ class Meteor(pygame.sprite.Sprite):
                     if self.rect.x >= 0:
                         self.chl = False
                 if self.rect.y > player.rect.y + player.rect.h or self.rect.x >= WIDTH or self.rect.right < 0:
-                    self.delete()
+                    self.kill()
         else:
             self.pas_move()
 
@@ -291,6 +298,8 @@ class Enemy(pygame.sprite.Sprite):
             self.delete()
 
     def delete(self):
+        s = sounds['enemy explode']
+        s.play()
         enemies_group.remove(self)
         all_sprites.remove(self)
 
@@ -326,10 +335,13 @@ class Enemy(pygame.sprite.Sprite):
             self.rect.x -= ENEMYSPEED
 
     def shot1(self, n1):
-        if n1 == 1:
-            self.shot_right()
-        else:
-            self.shot_left()
+        if self.get_moved():
+            s = sounds['enemy fire']
+            s.play()
+            if n1 == 1:
+                self.shot_right()
+            else:
+                self.shot_left()
 
     def update(self):
         self.danger = 0
@@ -428,7 +440,7 @@ class EnemyWeapon(PlayerWeapon):
             self.rect.x = enemy.rect.x + 10
         else:
             self.rect.x = enemy.rect.right - 10
-        self.rect.y = enemy.rect.y
+        self.rect.y = enemy.rect.y + enemy.rect.h
 
     def move(self):
         self.rect.y += PLAYERSPEED * 2

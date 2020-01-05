@@ -16,11 +16,22 @@ def load_image(name, colorkey=None):
     return image
 
 
+def sound_name(name):
+    fullname = os.path.join('sound', name)
+    return fullname
+
+
+def load_sound(name):
+    snd = pygame.mixer.Sound(sound_name(name))
+    return snd
+
+
 FPS = 30
 pygame.init()
 size = WIDTH, HEIGHT = 450, 650
 screen = pygame.display.set_mode(size)
 clock = pygame.time.Clock()
+music = 0
 images = {'player': load_image('player.png', -1), 'meteor0': load_image('meteor.png', -1),
           'meteor90': load_image('meteor90.png', -1), 'meteor180': load_image('meteor180.png', -1),
           'meteor270': load_image('meteor270.png', -1),
@@ -31,6 +42,11 @@ images = {'player': load_image('player.png', -1), 'meteor0': load_image('meteor.
           'osk3': load_image("oskol3.png", -1), 'fon1': load_image('fon.jpg'), 'fon2': load_image('fon2.jpg'),
           'fon3': load_image('fon3.jpg'), 'strelki': load_image('strelki.png', -1),
           'sterki1': load_image('strelki1.png', -1)}
+sounds = {'main_theme': sound_name("John Williams_-_Ben Kenobi's Death _ Tie Fighter Attack.mp3"),
+          'game_theme': sound_name("Order 66.mp3"), 'won_theme': sound_name('Cantina band.mp3'),
+          'lose_theme': sound_name("John_Williams_-_Approaching_the_Throne_(musicport.org).mp3"),
+          'enemy explode': load_sound("TIE fighter explode.wav"), 'enemy fire': load_sound("TIE fighter fire 1.wav"),
+          'player fire': load_sound("XWing fire.wav"), 'player explode': load_sound("XWing explode.wav")}
 
 
 def terminate():
@@ -39,8 +55,14 @@ def terminate():
 
 
 def start_screen():
+    global music
     sp = []
     intro_text = ["PySpace", 'Играть']
+    if music == 0:
+        pygame.mixer_music.load(sounds['main_theme'])
+        pygame.mixer_music.play(-1)
+        pygame.mixer_music.set_volume(0.6)
+        music = 1
     screen.fill((0, 0, 0))
     Fon(-400, -200, fon_group, 1)
     fon_group.draw(screen)
@@ -107,15 +129,21 @@ class Lesson(pygame.sprite.Sprite):
 
     def update(self, *args):
         if self.rect.collidepoint(args[0].pos):
+            if self.n == 3:
+                pygame.mixer_music.load(sounds['boss_theme'])
+            else:
+                pygame.mixer_music.load(sounds['game_theme'])
+            pygame.mixer_music.play(-1)
             return generate_level(f'level{self.n}.txt'), self.n
         else:
             return False
 
 
 def display_lessons(n=None):
+    global music
     if n is None:
         screen.fill((0, 0, 0))
-        Fon(-1450, -200, fon_group, 2)
+        Fon(-10, -10, fon_group, 2)
         for i in range(3):
             Lesson(i + 1)
         MySprite(True, 0, 0)
@@ -136,6 +164,14 @@ def display_lessons(n=None):
     else:
         for i in lessons_group:
             if i.n == n:
+                if n == 3:
+                    pygame.mixer_music.load(sounds['boss_theme'])
+
+                else:
+                    pygame.mixer_music.load(sounds['game_theme'])
+                pygame.mixer_music.play(-1)
+                pygame.mixer_music.set_volume(0.6)
+                music = 0
                 return generate_level(f'level{n}.txt'), n
 
 
@@ -212,6 +248,7 @@ class Fon(pygame.sprite.Sprite):
 
 
 def end_screen(won, n):
+    global music
     sp = []
     if won:
         intro_text = ["Вы победили"]
@@ -223,6 +260,13 @@ def end_screen(won, n):
         intro_text.append('К следующему уровню')  # Пока не работает, сделаю после 2-3 релиза
     else:
         intro_text.append('Повторить попытку')
+    if won:
+        pygame.mixer_music.load(sounds['won_theme'])
+    else:
+        pygame.mixer_music.load(sounds['lose_theme'])
+    pygame.mixer_music.play(-1)
+    pygame.mixer_music.set_volume(0.6)
+    music = 0
     screen.fill((0, 0, 0))
     Fon(-400, -200, fon_group, 3)
     fon_group.draw(screen)
