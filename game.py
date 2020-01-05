@@ -1,5 +1,4 @@
-from lessons import *
-import pygame
+from levels import *
 
 
 class Player(pygame.sprite.Sprite):
@@ -68,16 +67,16 @@ class Player(pygame.sprite.Sprite):
     def shot_e(self):
         if self.ammunition > 0:
             PlayerWeapon(1)
+            s = sounds['player fire']
+            s.play()
         self.ammunition -= 1
-        s = sounds['player fire']
-        s.play()
 
     def shot_q(self):
         if self.ammunition > 0:
             PlayerWeapon(0)
+            s = sounds['player fire']
+            s.play()
         self.ammunition -= 1
-        s = sounds['player fire']
-        s.play()
 
     def delete(self):
         global player
@@ -293,9 +292,10 @@ class Enemy(pygame.sprite.Sprite):
         self.shot = False
 
     def hurt(self, dam):
-        self.health -= dam
-        if self.health <= 0:
-            self.delete()
+        if self.get_moved():
+            self.health -= dam
+            if self.health <= 0:
+                self.delete()
 
     def delete(self):
         s = sounds['enemy explode']
@@ -501,11 +501,15 @@ class Boss(pygame.sprite.Sprite):
 
     def delete(self):
         global boss  # Пока так, но позже с анимацией
+        s = sounds['enemy explode']
+        s.play()
         boss_group.remove(self)
         all_sprites.remove(self)
         boss = None
 
     def inter_shot(self):
+        s = sounds['enemy fire']
+        s.play()
         BossWeapon(self.rect.x, self.rect.top + self.rect.h, 0)
         BossWeapon(self.rect.right, self.rect.top + self.rect.h, 0)
         BossWeapon(self.rect.x + self.rect.w // 4, self.rect.top + self.rect.h, 0)
@@ -513,6 +517,9 @@ class Boss(pygame.sprite.Sprite):
         BossWeapon(self.rect.right - self.rect.w // 2, self.rect.top + self.rect.h, 0)
 
     def sq_shot(self):
+        s = sounds['boss fire']
+        s.play()
+        s.set_volume(0.8)
         for i1 in range(25, -26, -10):
             BossWeapon(self.rect.x + self.rect.w // 2 - 5, self.rect.top + self.rect.h, i1)
 
@@ -523,6 +530,9 @@ class Boss(pygame.sprite.Sprite):
         BossWeapon(self.rect.right, self.rect.top + self.rect.h, -20)
         BossWeapon(self.rect.right, self.rect.top + self.rect.h, -15)
         BossWeapon(self.rect.right, self.rect.top + self.rect.h, -10)
+        s = sounds['boss fire']
+        s.play()
+        s.set_volume(0.8)
 
     def change_circle_radius(self):
         if self.circle == 1:
@@ -756,8 +766,8 @@ while True:
     pygame.time.set_timer(AMMTYPE, 2500)
     pygame.time.set_timer(HEALTYPE, 10000)
     screen.fill((0, 0, 0))
-    n2 = random.randint(1, 3)
-    Fon(-200, -420, fon_group, n2)
+    n2 = random.choice((1, 3))
+    Fon(-200, -1200, fon_group, n2, True)
     camera = Camera()
     sk = Shakla(0, 0)
     am = AmCount(WIDTH - 50, 4)
