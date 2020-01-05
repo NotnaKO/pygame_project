@@ -86,12 +86,13 @@ def start_screen():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
-            elif event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN and r.collidepoint(event.pos):
+            elif event.type == pygame.MOUSEBUTTONDOWN and r.collidepoint(event.pos):
                 return display_lessons()
         pygame.display.flip()
         clock.tick(FPS)
 
 
+player = None
 all_sprites = pygame.sprite.Group()
 my_group = pygame.sprite.Group()
 lessons_group = pygame.sprite.Group()
@@ -243,14 +244,6 @@ class Fon(pygame.sprite.Sprite):
         self.rect.x = x
         self.rect.y = y
         self.n = 0
-
-    def move(self):
-        self.rect.y += 1
-
-    def update(self):
-        self.n += 1
-        if self.n % 2:
-            self.move()
 
 
 def end_screen(won, n):

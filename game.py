@@ -87,15 +87,30 @@ class Player(pygame.sprite.Sprite):
         player = None
 
 
+class Fon2(Fon):
+    def __init__(self, x, y, fon_gr, n1, b=False):
+        super().__init__(x, y, fon_gr, n1, b)
+
+    def update(self, *args):
+        self.n += 1
+        if self.n % 2 == 0:
+            self.move()
+
+    def move(self):
+        if player is not None:
+            if player.rect.top + player.rect.h + 2 - self.rect.top > WIDTH:
+                self.rect.y += 1
+
+
 class PlayerWeapon(pygame.sprite.Sprite):
     def __init__(self, n1):
         super().__init__(all_sprites, weapons_group)
         self.image = images['red_weap']
         self.rect = self.image.get_rect()
         if n1 == 0:
-            self.rect.x = player.rect.x + 2
+            self.rect.x = player.rect.x + 5
         else:
-            self.rect.x = player.rect.right - 2
+            self.rect.x = player.rect.right - 5
         self.rect.y = player.rect.y
         self.damage = 30
 
@@ -737,8 +752,8 @@ SHOTTYPE2 = 22
 PLAYERSPEED = 5
 GRAVITY = 0
 KILLTYPE = 14
-ENEMYSPEED = PLAYERSPEED * 1.3
-ENEMYLEVEL = 7
+ENEMYSPEED = PLAYERSPEED * 1.5
+ENEMYLEVEL = 9
 PLAYERAMMUN = 30
 HEALTYPE = 31
 AMMTYPE = 11
@@ -761,13 +776,12 @@ while True:
     all_sprites = pygame.sprite.Group()
     sp_sprites = [fon_group, osk_group, weapons_group, meteors_group, enemies_group, player_group, boss_group,
                   slu_group]
-    pygame.time.set_timer(SHOTTYPE1, (10 - ENEMYLEVEL) * 1000)
-    pygame.time.set_timer(SHOTTYPE2, (10 - ENEMYLEVEL) * 1000)
+    pygame.time.set_timer(SHOTTYPE1, int((10 - ENEMYLEVEL) * 1000))
+    pygame.time.set_timer(SHOTTYPE2, int((10 - ENEMYLEVEL) * 1000))
     pygame.time.set_timer(AMMTYPE, 2500)
     pygame.time.set_timer(HEALTYPE, 10000)
     screen.fill((0, 0, 0))
     n2 = random.choice((1, 3))
-    Fon(-200, -1200, fon_group, n2, True)
     camera = Camera()
     sk = Shakla(0, 0)
     am = AmCount(WIDTH - 50, 4)
@@ -788,6 +802,7 @@ while True:
         levelmap.append(''.join(sp).replace('P', '-'))
     levelmap.append(''.join(sp))
     player = view_lesson()
+    Fon2(-200, -1200, fon_group, n2, True)
     righting, lefting = False, False
     accel, deccel = False, False
     for i in boss_group:
