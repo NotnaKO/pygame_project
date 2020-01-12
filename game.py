@@ -163,7 +163,7 @@ class Meteor(pygame.sprite.Sprite):
         self.rect.y += self.vect[1]
 
     def hurt(self, damage):
-        if self.check():
+        if self.check2():
             self.health -= damage
             if self.health <= 0:
                 self.delete()
@@ -183,6 +183,11 @@ class Meteor(pygame.sprite.Sprite):
 
     def check(self):
         if player.rect.top + player.rect.h - self.rect.top < HEIGHT:
+            return True
+        return False
+
+    def check2(self):
+        if player.rect.top + player.rect.h - self.rect.top - self.rect.h < HEIGHT:
             return True
         return False
 
@@ -269,6 +274,7 @@ class Oskol(pygame.sprite.Sprite):
         self.rect.x, self.rect.y = pos
         self.gravity = GRAVITY
         self.n = 0
+        self.tim = FPS * 2
 
     def update(self):
         self.n += 1
@@ -278,8 +284,18 @@ class Oskol(pygame.sprite.Sprite):
         if player is None:
             return
         if self.rect.y > player.rect.y + player.rect.h or self.rect.x >= WIDTH or self.rect.right < 0 \
-                or self.n > FPS * 2:
+                or self.n > self.tim:
             self.kill()
+
+
+class Boom(Oskol):
+    def __init__(self, x, y):
+        super().__init__((x, y), 0, -PLAYERSPEED // 2)
+        self.image = images['boom']
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+        self.tim = FPS * 14 // 10
 
 
 class Enemy(pygame.sprite.Sprite):
@@ -317,6 +333,7 @@ class Enemy(pygame.sprite.Sprite):
         s.play()
         enemies_group.remove(self)
         all_sprites.remove(self)
+        Boom(self.rect.x, self.rect.y)
 
     def heal(self, health):
         self.health += health

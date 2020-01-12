@@ -42,7 +42,7 @@ images = {'player': load_image('player.png', -1), 'meteor0': load_image('meteor.
           'osk3': load_image("oskol3.png", -1), 'fon1': load_image('fon.jpg'), 'fon2': load_image('fon2.jpg'),
           'fon3': load_image('fon3.jpg'), 'strelki': load_image('strelki.png', -1),
           'sterki1': load_image('strelki1.png', -1), 'fonb1': load_image('fonb.jpg'), 'fonb2': load_image('fonb2.jpg'),
-          'fonb3': load_image('fonb3.jpg')}
+          'fonb3': load_image('fonb3.jpg'), 'boom':load_image('vsr.gif', -1)}
 sounds = {'main_theme': sound_name("John Williams_-_Ben Kenobi's Death _ Tie Fighter Attack.mp3"),
           'game_theme': sound_name("Order 66.mp3"), 'won_theme': sound_name('Cantina band.mp3'),
           'lose_theme': sound_name("John_Williams_-_Approaching_the_Throne_(musicport.org).mp3"),
