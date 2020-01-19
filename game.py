@@ -28,11 +28,11 @@ class Player(pygame.sprite.Sprite):
             self.rect.y -= self.speed
 
     def reamm(self):
+        if self.ammunition < PLAYERAMMUN:
+            self.ammunition += 1
         if self.ammunition < 10:
             self.ammunition += 1
-        if self.ammunition < 7:
-            self.ammunition += 1
-        if self.ammunition < 4:
+        if self.ammunition < 3:
             self.ammunition += 1
 
     def update(self):  # делает стандартный ход
@@ -98,7 +98,7 @@ class Fon2(Fon):
 
     def move(self):
         if player is not None:
-            if player.rect.top + player.rect.h + 2 - self.rect.top > WIDTH:
+            if player.rect.top + player.rect.h - self.rect.top > HEIGHT - 5:
                 self.rect.y += 1
 
 
@@ -108,9 +108,9 @@ class PlayerWeapon(pygame.sprite.Sprite):
         self.image = images['red_weap']
         self.rect = self.image.get_rect()
         if n1 == 0:
-            self.rect.x = player.rect.x + 5
+            self.rect.x = player.rect.x + 9
         else:
-            self.rect.x = player.rect.right - 5
+            self.rect.x = player.rect.right - 9
         self.rect.y = player.rect.y
         self.damage = 30
 
@@ -119,6 +119,15 @@ class PlayerWeapon(pygame.sprite.Sprite):
 
     def update(self):
         self.move()
+        spr = None
+        if boss is not None:
+            if boss.shield_rect is not None:
+                x1, y1, w1, h1 = self.rect.x, self.rect.top, self.rect.w, self.rect.h
+                x2, y2, w2, h2 = boss.shield_rect
+                if (x1 + w1 >= x2 >= x1 and y1 + h1 >= y2 >= y1) or (x2 + w2 >= x1 >= x2 and y2 + h2 >= y1 >= y2):
+                    boss.shield_hurt(self.damage)
+                    self.damage = 0
+                    self.delete()
         if pygame.sprite.spritecollideany(self, meteors_group):
             spr = pygame.sprite.spritecollideany(self, meteors_group)
         elif pygame.sprite.spritecollideany(self, enemies_group):
@@ -368,8 +377,6 @@ class Enemy(pygame.sprite.Sprite):
 
     def shot1(self, n1):
         if self.get_moved():
-            s = sounds['enemy fire']
-            s.play()
             if n1 == 1:
                 self.shot_right()
             else:
@@ -390,6 +397,12 @@ class Enemy(pygame.sprite.Sprite):
         for i1 in weapons_group:
             if type(i1) == PlayerWeapon:
                 k1 += 1
+        if self.rect.x < 0:
+            self.lefting = False
+            self.righting = True
+        if self.rect.right > WIDTH:
+            self.righting = False
+            self.lefting = True
         if not self.righting and not self.lefting:
             for i1 in weapons_group:
                 if type(i1) == PlayerWeapon:
@@ -409,8 +422,10 @@ class Enemy(pygame.sprite.Sprite):
                         self.sp.append(i1.rect.right + 10)
             if self.rect.x < 5:
                 self.danger_l += 5
+
             if WIDTH - self.rect.right < 5:
                 self.danger_r += 5
+
             if self.danger:
                 if self.danger_r <= self.danger and self.danger_l > self.danger_r:
                     self.righting = True
@@ -439,6 +454,7 @@ class Enemy(pygame.sprite.Sprite):
         elif self.righting and self.rect.right > WIDTH:
             self.righting = False
             self.coord = WIDTH - self.rect.right - 1
+
         if self.rect.x <= player.rect.x <= self.rect.right or self.rect.x <= player.rect.right <= self.rect.right:
             if player.rect.top - self.rect.top < HEIGHT:
                 if player.rect.x < self.rect.right < player.rect.right:
@@ -446,7 +462,7 @@ class Enemy(pygame.sprite.Sprite):
                 elif player.rect.x < self.rect.x < player.rect.right:
                     self.shot = 2
 
-        elif not self.lefting and not self.righting and player.rect.top - self.rect.top - self.rect.h < HEIGHT \
+        elif not self.lefting and not self.righting and player.rect.top + player.rect.h - self.rect.top < HEIGHT + 10 \
                 and k1 == 0:
             if abs(player.rect.x - self.rect.right) < abs(player.rect.right - self.rect.x):
                 self.righting = True
@@ -466,12 +482,14 @@ class Enemy(pygame.sprite.Sprite):
 class EnemyWeapon(PlayerWeapon):
     def __init__(self, enemy, n1):
         super().__init__(n1)
+        s = sounds['enemy fire']
+        s.play()
         self.image = images['gre_weap']
         self.rect = self.image.get_rect()
         if n1 == 0:
-            self.rect.x = enemy.rect.x + 10
+            self.rect.x = enemy.rect.x + 9
         else:
-            self.rect.x = enemy.rect.right - 10
+            self.rect.x = enemy.rect.right - 9
         self.rect.y = enemy.rect.y + enemy.rect.h
 
     def move(self):
@@ -531,8 +549,17 @@ class Boss(pygame.sprite.Sprite):
             if self.health <= 0:
                 self.delete()
 
+    def shield_hurt(self, damage):
+        if damage <= 0:
+            return
+        if self.shield_health > damage:
+            self.shield_health -= damage
+        else:
+            self.shield_health = 0
+            self.end_shield()
+
     def delete(self):
-        global boss  # Пока так, но позже с анимацией
+        global boss
         s = sounds['enemy explode']
         s.play()
         boss_group.remove(self)
@@ -555,7 +582,7 @@ class Boss(pygame.sprite.Sprite):
         for i1 in range(25, -26, -10):
             BossWeapon(self.rect.x + self.rect.w // 2 - 5, self.rect.top + self.rect.h, i1)
 
-    def out_shot(self):  # Нужно подобрать правильные углы
+    def out_shot(self):
         BossWeapon(self.rect.x, self.rect.top + self.rect.h, 20)
         BossWeapon(self.rect.x, self.rect.top + self.rect.h, 15)
         BossWeapon(self.rect.x, self.rect.top + self.rect.h, 10)
@@ -577,10 +604,10 @@ class Boss(pygame.sprite.Sprite):
             color.b = 151
             color.g = 138
             color.a = 100
-            self.shield_rect = pygame.draw.circle(screen, color,
-                                                  (self.rect.x + self.rect.w // 2,
-                                                   self.rect.y + self.rect.h // 2),
-                                                  self.circle_radius, 5)
+            pygame.draw.circle(screen, color,
+                               (self.rect.x + self.rect.w // 2,
+                                self.rect.y + self.rect.h // 2),
+                               self.circle_radius, 5)
 
     def start_shield(self):
         if self.circle_radius < self.max_radius:
@@ -590,6 +617,7 @@ class Boss(pygame.sprite.Sprite):
     def end_shield(self):
         self.circle = -1
         self.shield_health = 0
+        self.shield_rect = None
 
     def shot(self):
         if not self.get_moved():
@@ -608,6 +636,7 @@ class Boss(pygame.sprite.Sprite):
         if (self.circle_radius < 5 and self.circle == -1) or (
                 self.circle_radius > self.max_radius - 5 and self.circle == 1):
             self.circle = 0
+            self.shield_rect = (self.rect.x - 21, self.rect.top, self.max_radius * 2 -2 , self.max_radius * 2)
         self.change_circle_radius()
 
     def get_moved(self):
@@ -619,6 +648,8 @@ class Boss(pygame.sprite.Sprite):
 
     def update(self):
         self.chrad()
+        if self.shield_rect is not None:
+            self.shield_rect = (self.rect.x - 21, self.rect.top, self.max_radius * 2 - 2, self.max_radius * 2)
 
 
 class BossWeapon(PlayerWeapon):
@@ -665,7 +696,7 @@ class Camera:
 
     def apply(self, obj):
         if type(obj) != Shakla and type(obj) != AmCount and type(obj) != Enemy and type(obj) != Meteor \
-                and type(obj) != Boss:
+                and type(obj) != Boss and type(obj) != Fon2:
             obj.rect.y += self.dy
         elif type(obj) == Enemy:
             if not check():
@@ -795,7 +826,7 @@ while True:
                   slu_group]
     pygame.time.set_timer(SHOTTYPE1, int((10 - ENEMYLEVEL) * 1000))
     pygame.time.set_timer(SHOTTYPE2, int((10 - ENEMYLEVEL) * 1000))
-    pygame.time.set_timer(AMMTYPE, 2500)
+    pygame.time.set_timer(AMMTYPE, 3500)
     pygame.time.set_timer(HEALTYPE, 10000)
     screen.fill((0, 0, 0))
     n2 = random.choice((1, 3))

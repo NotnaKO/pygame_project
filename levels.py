@@ -197,7 +197,6 @@ def generate_level(filename):
                 else:
                     elem = typ
                 # m - Метеоры
-                # k - корабли, которые не двигаются
                 # n - корабли которые двигаются
                 # b - босс
                 sp1.extend((k, elem))
@@ -212,9 +211,13 @@ def generate_level(filename):
             s += k * elem
         if map_width < len(s):
             s = s[:map_width]
-        if not s.count('b'):
+        if not s.count('b') and not s.count('n'):
             s += (map_width - len(s)) * '-'
             random.shuffle(s)
+            map1.append(''.join(s))
+        elif s.count('n'):
+            s = '--n'
+            s += (map_width - len(s)) * '-'
             map1.append(''.join(s))
         else:
             lw = map_width
