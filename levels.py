@@ -1,55 +1,10 @@
 import random
-import pygame
-import os
 import sys
+from const import *
+from data import images, sounds, load_image
 
-
-def load_image(name, colorkey=None):
-    fullname = os.path.join('pic', name)
-    image = pygame.image.load(fullname).convert()
-    if colorkey is not None:
-        if colorkey == -1:
-            colorkey = image.get_at((0, 0))
-        image.set_colorkey(colorkey)
-    else:
-        image = image.convert_alpha()
-    return image
-
-
-def sound_name(name):
-    fullname = os.path.join('sound', name)
-    return fullname
-
-
-def load_sound(name):
-    snd = pygame.mixer.Sound(sound_name(name))
-    return snd
-
-
-FPS = 30
-pygame.init()
-size = WIDTH, HEIGHT = 450, 650
-screen = pygame.display.set_mode(size)
-clock = pygame.time.Clock()
-music = 0
-images = {'player': load_image('player.png', -1), 'meteor0': load_image('meteor.png', -1),
-          'meteor90': load_image('meteor90.png', -1), 'meteor180': load_image('meteor180.png', -1),
-          'meteor270': load_image('meteor270.png', -1),
-          'red_weap': load_image('red_weapon.png', -1), 'shkala': load_image('shkala.png', -1),
-          'amk': load_image('amk.png', -1), 'enemy': load_image('enemy.png', -1),
-          'gre_weap': load_image('green_weapon.png', -1), 'boss': load_image('boss.png', -1),
-          'osk1': load_image("oskol1.png", -1), 'osk2': load_image("oskol2.png", -1),
-          'osk3': load_image("oskol3.png", -1), 'fon1': load_image('fon.jpg'), 'fon2': load_image('fon2.jpg'),
-          'fon3': load_image('fon3.jpg'), 'strelki': load_image('strelki.png', -1),
-          'sterki1': load_image('strelki1.png', -1), 'fonb1': load_image('fonb.jpg'), 'fonb2': load_image('fonb2.jpg'),
-          'fonb3': load_image('fonb3.jpg'), 'boom': load_image('vsr.gif', -1)}
-sounds = {'main_theme': sound_name("John Williams_-_Ben Kenobi's Death _ Tie Fighter Attack.mp3"),
-          'game_theme': sound_name("Order 66.mp3"), 'won_theme': sound_name('Cantina band.mp3'),
-          'lose_theme': sound_name("John_Williams_-_Approaching_the_Throne_(musicport.org).mp3"),
-          'boss_theme': sound_name("boss_theme.mp3"),
-          'enemy explode': load_sound("TIE fighter explode.wav"), 'enemy fire': load_sound("TIE fighter fire 1.wav"),
-          'player fire': load_sound("XWing fire.wav"), 'player explode': load_sound("XWing explode.wav"),
-          'boss fire': load_sound("TIE fighter fire 3.wav")}  # Файлы музыки и картинок
+player = None  # Объект игрока, первоначально не задан
+all_sprites, my_group, lessons_group, fon_group = restart_sprites_for_lessons()
 
 
 def terminate():
@@ -94,13 +49,6 @@ def start_screen():
         clock.tick(FPS)
 
 
-player = None  # Объект игрока, первоначально не задан
-all_sprites = pygame.sprite.Group()
-my_group = pygame.sprite.Group()  # Группа спрайтов для специальных объектов (стрелок для перехода)
-lessons_group = pygame.sprite.Group()  # Группа спрайтов для показа значков уровней
-fon_group = pygame.sprite.Group()  # Группа спрайтов для фонов
-
-
 class Fon(pygame.sprite.Sprite):
     """ Класс фонов для игры"""
 
@@ -114,7 +62,24 @@ class Fon(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
-        self.n = 0
+        self.n = 0  # Счётчик
+
+
+class Fon2(Fon):
+    """Фон, который двигается"""
+
+    def __init__(self, x, y, fon_gr, n1, b=False):
+        super().__init__(x, y, fon_gr, n1, b)
+
+    def update(self, *args):
+        self.n += 1  # Используем счётчик от родительского класса
+        if self.n % 2 == 0:
+            self.move()
+
+    def move(self):
+        if player is not None:  # Ограничение по координате игрока, чтобы не выходить за фон
+            if player.rect.top + player.rect.h - self.rect.top > HEIGHT - 5:
+                self.rect.y += 1
 
 
 class MySprite(pygame.sprite.Sprite):
@@ -223,7 +188,7 @@ def generate_level(filename):  # Собираем уровень
                     elem = '*'
                 else:
                     elem = typ
-                # m - Метеоры
+                # m - астероиды
                 # n - корабли врагов
                 # b - босс
                 sp1.extend((k, elem))
@@ -249,19 +214,31 @@ def generate_level(filename):  # Собираем уровень
             s += (map_width - len(s)) * '-'
             map1.append(''.join(s))
         else:  # Если есть босс
-            lw = map_width
-            if lw % 2 != 0:  # Ставим босса по середине
-                pl_xn = (lw - 1) // 2
+            level_width = map_width
+            if level_width % 2 != 0:  # Ставим босса по середине
+                pl_xn = (level_width - 1) // 2
             else:
-                pl_xn = lw // 2
+                pl_xn = level_width // 2
             sp1 = []
-            for i1 in range(lw):
+            for i1 in range(level_width):
                 if i1 != pl_xn:
                     sp1.append('-')
                 else:
                     sp1.append('b')
             map1.append(''.join(sp1))
-
+    if LEVEL_WIDTH % 2 != 0:
+        pl_xn = (LEVEL_WIDTH - 1) // 2
+    else:
+        pl_xn = LEVEL_WIDTH // 2
+    sp = []
+    for i in range(LEVEL_WIDTH):
+        if i != pl_xn:
+            sp.append('-')
+        else:
+            sp.append('P')
+    for i in range(5):
+        map1.append(''.join(sp).replace('P', '-'))
+    map1.append(''.join(sp))
     return map1
 
 
