@@ -104,9 +104,9 @@ class AmCount(pygame.sprite.Sprite):
 class Meteor(pygame.sprite.Sprite):
     """Класс астероида"""
 
-    def __init__(self, x, y):
+    def __init__(self, x, y, group):
         """Инициализация астероида"""
-        super().__init__(meteors_group, all_sprites)
+        super().__init__(group, all_sprites, group)
         grad = random.choice(('0', '90', '180', '270'))  # Выбираем угол поворота картинки для разноообразия
         self.image = images[f"meteor{grad}"]  # Загружаем подходящую картинку
         self.rect = self.image.get_rect()
@@ -151,7 +151,7 @@ class Meteor(pygame.sprite.Sprite):
 
     def check(self):
         """Проверяет видит ли игрок весь астероид"""
-        if player is not None:
+        if player is None:
             return
         if player.rect.top + player.rect.h - self.rect.top < HEIGHT:
             return True
@@ -159,7 +159,7 @@ class Meteor(pygame.sprite.Sprite):
 
     def check2(self):
         """Функция проверяет видит ли игрок какую-то часть астероида"""
-        if player is not None:
+        if player is None:
             return
         if player.rect.top + player.rect.h - self.rect.top - self.rect.h < HEIGHT:
             return True
@@ -167,7 +167,7 @@ class Meteor(pygame.sprite.Sprite):
 
     def far_check(self):
         """Функция проверяет близко ли астероид к тому, что бы появиться на экране"""
-        if player is not None:
+        if player is None:
             return
         if player.rect.top + player.rect.h - self.rect.top - self.rect.h < HEIGHT + 10:
             return True
@@ -329,37 +329,37 @@ class Player(pygame.sprite.Sprite):
         player = None
 
 
-class Enemy(pygame.sprite.Sprite):
+class Enemy(Meteor):
+    """Класс вражеских кораблей"""
+
     def __init__(self, x, y):
-        super().__init__(all_sprites, enemies_group)
+        super().__init__(x, y, enemies_group)
         self.image = images['enemy']
         self.rect = self.image.get_rect()
-        if 0 < x < WIDTH:
-            self.rect.x = x * COLUMN_COUNT
-        elif x <= 0:
-            self.rect.x = 2
-        else:
-            self.rect.x = WIDTH - 2
+        self.rect.x = x * COLUMN_COUNT
         self.rect.y = y * GAME_SPEED
         self.damage = 30
         self.health = 60
-        self.danger = 0
-        self.danger_r = 0
-        self.danger_l = 0
+        self.danger_middle = 0  # Это 3 счетчика, чтобы рассчитывать движение по дествиям игрока
+        self.danger_right = 0
+        self.danger_left = 0
         self.ammunition = 10
-        self.lefting = False
-        self.righting = False
-        self.coord = self.rect.x
-        self.sp = []
-        self.shot = False
+        self.moving = False
+        self.coordinate_to_go = self.rect.x  # Координата, к которой нужно перемещаться
+        self.old_counter = 0
+        self.list_of_player_weapons = []
+        self.shot = False  # Флаг, чтобы корабли постоянно не стреляли
+        self.change_coord = True  # Флаг, чтобы корабль не дергался, постоянно меняя направление
 
     def hurt(self, dam):
+        """Функция получения урона"""
         if self.get_moved():
             self.health -= dam
             if self.health <= 0:
                 self.delete()
 
     def delete(self):
+        """Уничтожение корабля и создание взрыва после него"""
         s = sounds['enemy explode']
         s.play()
         enemies_group.remove(self)
@@ -367,23 +367,27 @@ class Enemy(pygame.sprite.Sprite):
         Boom(self.rect.x, self.rect.y)
 
     def heal(self, health):
+        """Пополнение здоровья"""
         self.health += health
         if self.health > 60:
             self.health = 60
 
     def reamm(self):
+        """Пополнение боеприпасов"""
         if self.ammunition <= 15:
             self.ammunition += 1
         if self.ammunition < 7:
             self.ammunition += 1
 
     def shot_left(self):
+        """Выстрел слева(для игрока)"""
         if self.ammunition > 0 and self.shot == 2:
             EnemyWeapon(self, 0)
             self.ammunition -= 1
             self.shot = False
 
     def shot_right(self):
+        """Выстрел справа"""
         if self.ammunition > 0 and self.shot == 1:
             EnemyWeapon(self, 1)
             self.ammunition -= 1
@@ -391,13 +395,15 @@ class Enemy(pygame.sprite.Sprite):
 
     def move_right(self):
         if self.rect.right + ENEMY_SPEED <= WIDTH + 5:
+            # Не приближаю вражеский корабль очень близко к краям, чтобы он не уходил за них
             self.rect.x += ENEMY_SPEED
 
     def move_left(self):
         if self.rect.x - ENEMY_SPEED >= -5:
             self.rect.x -= ENEMY_SPEED
 
-    def shot1(self, n1):
+    def do_shot(self, n1):
+        """Функция делает выстрел справа, если аргумент 1, иначе делает выстрел слева"""
         if self.get_moved():
             if n1 == 1:
                 self.shot_right()
@@ -405,93 +411,86 @@ class Enemy(pygame.sprite.Sprite):
                 self.shot_left()
 
     def update(self):
-        self.danger = 0
-        self.danger_r = 0
-        self.danger_l = 0
-        self.sp = []
-        k1 = 0
-        if player is None:
+        if player is None or not self.check2():
             return
-        if pygame.sprite.spritecollideany(self, meteors_group):
+        self.danger_middle = 0
+        self.danger_right = 0
+        self.danger_left = 0
+        self.list_of_player_weapons = []  # Список с координатами левой стороны выстрела
+        player_weapons_counter = 0
+        if self.coordinate_to_go < 0:
+            self.coordinate_to_go = 1
+        if self.coordinate_to_go > WIDTH:
+            self.coordinate_to_go = WIDTH - 1
+        if pygame.sprite.spritecollideany(self, meteors_group):  # Если сталкивается с астероидами
             spr = pygame.sprite.spritecollideany(self, meteors_group)
             spr.hurt(self.damage)
             self.hurt(spr.damage)
+
         for i1 in weapons_group:
             if type(i1) == PlayerWeapon:
-                k1 += 1
-        if self.rect.x < 0:
-            self.lefting = False
-            self.righting = True
-        if self.rect.right > WIDTH:
-            self.righting = False
-            self.lefting = True
-        if not self.righting and not self.lefting:
-            for i1 in weapons_group:
-                if type(i1) == PlayerWeapon:
-                    if self.rect.x <= i1.rect.right <= self.rect.right \
-                            or self.rect.x <= i1.rect.x <= self.rect.right:
-                        if WIDTH - i1.rect.right > i1.rect.x:
-                            self.danger += 1
-                            self.sp.append(i1.rect.right + 10)
-                        else:
-                            self.danger += 1
-                            self.sp.append(i1.rect.x - 10)
-                    if i1.rect.x > self.rect.right:
-                        self.danger_r += 1
-                        self.sp.append(i1.rect.x - 10)
-                    if i1.rect.right < self.rect.x:
-                        self.danger_l += 1
-                        self.sp.append(i1.rect.right + 10)
-            if self.rect.x < 5:
-                self.danger_l += 5
-
-            if WIDTH - self.rect.right < 5:
-                self.danger_r += 5
-
-            if self.danger:
-                if self.danger_r <= self.danger and self.danger_l > self.danger_r:
-                    self.righting = True
-                    self.coord = max(self.sp)
-                elif self.danger_l <= self.danger and self.danger_l < self.danger_r:
-                    self.lefting = True
-                    self.coord = min(self.sp)
-                elif self.danger_l == self.danger_r and self.danger_r < self.danger:
-                    if self.rect.right - max(self.sp) - 7 < min(self.sp) - self.rect.x:
-                        self.righting = True
-                        self.coord = max(self.sp)
+                player_weapons_counter += 1
+                if self.rect.x <= i1.rect.right <= self.rect.right \
+                        or self.rect.x <= i1.rect.x <= self.rect.right:
+                    # Если выстрел нацелен на вражеский корабль, то это угроза в середине
+                    self.danger_middle += 1
+                elif i1.rect.x > self.rect.right:
+                    # Если выстрел пролетает справа и пока не задевает корабль, то это тоже стоит учитовать
+                    self.danger_right += 1
+                elif i1.rect.right < self.rect.x:
+                    # Если выстрел пролетает слева и пока не задевает корабль, то это тоже стоит учитовать
+                    self.danger_left += 1
+                self.list_of_player_weapons.append(i1.rect.x)
+        if player_weapons_counter != self.old_counter:
+            self.change_coord = True
+        if self.rect.x < 17:
+            # Если прижиматься к краям, то это делает корабль более уязвимым
+            self.danger_left += 5
+        if WIDTH - self.rect.right < 17:
+            self.danger_right += 5
+        if self.change_coord:
+            if self.danger_middle:  # Если кораблю угрожает попадание, то нужно двигаться
+                if self.danger_right <= self.danger_middle and self.danger_left > self.danger_right:
+                    # Если справо безопаснее, то двигаемся туда
+                    self.coordinate_to_go = max(self.list_of_player_weapons) + 17 + 3 if max(
+                        self.list_of_player_weapons) + 17 + 3 < WIDTH - 5 else min(
+                        self.list_of_player_weapons) - self.rect.w - 3
+                elif self.danger_left <= self.danger_middle and self.danger_left < self.danger_right:
+                    # Если слева безопаснее, то двигаемся туда
+                    self.coordinate_to_go = min(self.list_of_player_weapons) - self.rect.w - 3 if min(
+                        self.list_of_player_weapons) - self.rect.w - 3 > 5 else max(
+                        self.list_of_player_weapons) + 17 + 3
+                elif self.danger_left == self.danger_right and self.danger_right < self.danger_middle:
+                    if abs(self.rect.x - min(self.list_of_player_weapons) + self.rect.w) > abs(max(
+                            self.list_of_player_weapons) - self.rect.x):
+                        self.coordinate_to_go = max(self.list_of_player_weapons) + 17 + 3 if max(
+                            self.list_of_player_weapons) + 17 + 3 < WIDTH - 5 else min(
+                            self.list_of_player_weapons) - self.rect.w - 3
                     else:
-                        self.lefting = True
-                        self.coord = min(self.sp)
-        elif self.righting and self.rect.x < self.coord:
+                        self.coordinate_to_go = min(self.list_of_player_weapons) - self.rect.w - 3 if min(
+                            self.list_of_player_weapons) - self.rect.w - 3 > 5 else max(
+                            self.list_of_player_weapons) + 17 + 3
+        if self.coordinate_to_go - 1.5 <= self.rect.x <= self.coordinate_to_go + 1.5:
+            self.moving = False
+        elif self.coordinate_to_go > self.rect.x:
+            self.moving = True
             self.move_right()
-        elif self.lefting and self.rect.right > self.coord:
+        elif self.rect.x > self.coordinate_to_go:
+            self.moving = True
             self.move_left()
-        if self.righting and self.rect.x >= self.coord:
-            self.righting = False
-        elif self.lefting and self.rect.right <= self.coord:
-            self.lefting = False
-        if self.lefting and self.rect.x < 0:
-            self.lefting = False
-            self.coord = self.rect.w + 1
-        elif self.righting and self.rect.right > WIDTH:
-            self.righting = False
-            self.coord = WIDTH - self.rect.right - 1
-
-        if self.rect.x <= player.rect.x <= self.rect.right or self.rect.x <= player.rect.right <= self.rect.right:
-            if player.rect.top - self.rect.top < HEIGHT:
-                if player.rect.x < self.rect.right < player.rect.right:
+        if player.rect.x <= self.rect.right <= player.rect.right or player.rect.x <= self.rect.x <= player.rect.right:
+            if self.check2():
+                if player.rect.x <= self.rect.right <= player.rect.right:
                     self.shot = 1
-                elif player.rect.x < self.rect.x < player.rect.right:
+                elif player.rect.x <= self.rect.x <= player.rect.right:
                     self.shot = 2
-
-        elif not self.lefting and not self.righting and player.rect.top + player.rect.h - self.rect.top < HEIGHT + 10 \
-                and k1 == 0:
+        elif not self.moving and self.check2() and player_weapons_counter == 0:
             if abs(player.rect.x - self.rect.right) < abs(player.rect.right - self.rect.x):
-                self.righting = True
-                self.coord = player.rect.x + 3
+                self.coordinate_to_go = player.rect.x + 3
             else:
-                self.lefting = True
-                self.coord = player.rect.right - 3
+                self.coordinate_to_go = player.rect.right - 3
+        self.old_counter = player_weapons_counter
+        self.change_coord = False
 
     def get_moved(self):
         if not player:
@@ -685,7 +684,7 @@ def view_lesson():
             if levelmap[i1][j] == '-':
                 continue
             elif levelmap[i1][j] == '*':
-                Meteor(j, i1)
+                Meteor(j, i1, meteors_group)
             elif levelmap[i1][j] == 'n':
                 Enemy(j, i1)
             elif levelmap[i1][j] == 'P':
@@ -878,11 +877,11 @@ while True:
             elif event.type == SHOT_TYPE1:
                 for i in enemies_group:
                     if type(i) is Enemy:
-                        i.shot1(1)
+                        i.do_shot(1)
             elif event.type == SHOT_TYPE2:
                 for i in enemies_group:
                     if type(i) is Enemy:
-                        i.shot1(2)
+                        i.do_shot(2)
             elif event.type == HEAL_TYPE:
                 if player is not None:
                     player.heal(10)
