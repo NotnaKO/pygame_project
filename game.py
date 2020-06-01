@@ -332,8 +332,8 @@ class Player(pygame.sprite.Sprite):
 class Enemy(Meteor):
     """Класс вражеских кораблей"""
 
-    def __init__(self, x, y):
-        super().__init__(x, y, enemies_group)
+    def __init__(self, x, y, group):
+        super().__init__(x, y, group)
         self.image = images['enemy']
         self.rect = self.image.get_rect()
         self.rect.x = x * COLUMN_COUNT
@@ -510,43 +510,43 @@ class Enemy(Meteor):
         return False
 
 
-class Boss(pygame.sprite.Sprite):
+class Boss(Enemy):
+    """Класс босса"""
+
     def __init__(self, x, y):
-        super().__init__(all_sprites, boss_group)
+        super().__init__(x, y, boss_group)
         self.image = images['boss']
         self.rect = self.image.get_rect()
         self.rect.x = x * COLUMN_COUNT - 5
         self.rect.y = y * GAME_SPEED
-        self.health = 500
+        self.health = BOSS_HEALTH
         self.shield_health = 0
         self.damage = 20
-        self.n = 0
+        self.shot_choice = 0
         self.shield_rect = None
-        self.circle = 0
+        self.circle_run = 0  # Переменная, показывающая, что происходит со щитом
         self.max_radius = self.rect.h // 2 + 5
         self.circle_radius = 3
         pygame.time.set_timer(SHIELD_START_TYPE, 5000)
         pygame.time.set_timer(SHIELD_END_TYPE, 10000)
         pygame.time.set_timer(BOSS_SHOT_TYPE, 2200)
-        self.start_shield()
+        self.start_shield()  # Создаём щит
 
     def hurt(self, damage):
+        """Функция получения урона"""
         if damage <= 0:
             return
-        if self.shield_health > damage:
-            self.shield_health -= damage
-        elif self.shield_health == damage:
-            self.shield_health -= damage
-            self.end_shield()
+        if self.shield_health >= damage:  # В случае босса нужно учитывать поглощение урона щитом
+            self.shield_hurt(damage)
         else:
+            self.shield_hurt(damage)
             damage -= self.shield_health
-            self.shield_health = 0
-            self.end_shield()
             self.health -= damage
             if self.health <= 0:
                 self.delete()
 
     def shield_hurt(self, damage):
+        """Функция для получения урона щитом. Используется при попадании в босса в щите и просто попадания в щит"""
         if damage <= 0:
             return
         if self.shield_health > damage:
@@ -556,6 +556,7 @@ class Boss(pygame.sprite.Sprite):
             self.end_shield()
 
     def delete(self):
+        """Функция уничтожения босса"""
         global boss
         s = sounds['enemy explode']
         s.play()
@@ -564,6 +565,7 @@ class Boss(pygame.sprite.Sprite):
         boss = None
 
     def inter_shot(self):
+        """Функция для одного из видов ударов босса. Выпускает 5 паралельных выстрелов под себя"""
         s = sounds['enemy fire']
         s.play()
         BossWeapon(self.rect.x, self.rect.top + self.rect.h, 0)
@@ -572,7 +574,8 @@ class Boss(pygame.sprite.Sprite):
         BossWeapon(self.rect.right - self.rect.w // 4, self.rect.top + self.rect.h, 0)
         BossWeapon(self.rect.right - self.rect.w // 2, self.rect.top + self.rect.h, 0)
 
-    def sq_shot(self):
+    def square_shot(self):
+        """Функция для одного из видов ударов босса. Выпускает множество выстрелов по всем направлениям"""
         s = sounds['boss fire']
         s.play()
         s.set_volume(0.8)
@@ -580,6 +583,7 @@ class Boss(pygame.sprite.Sprite):
             BossWeapon(self.rect.x + self.rect.w // 2 - 5, self.rect.top + self.rect.h, i1)
 
     def out_shot(self):
+        """Функция для одного из видов ударов босса. Выпускает 6 выстрелов по направлению к краям экрана"""
         BossWeapon(self.rect.x, self.rect.top + self.rect.h, 20)
         BossWeapon(self.rect.x, self.rect.top + self.rect.h, 15)
         BossWeapon(self.rect.x, self.rect.top + self.rect.h, 10)
@@ -591,12 +595,16 @@ class Boss(pygame.sprite.Sprite):
         s.set_volume(0.8)
 
     def change_circle_radius(self):
-        if self.circle == 1:
+        """Функция, изменяющая щит босса"""
+        # Переменная self.circle_run показывает как нужно менять щит
+        # Если она равна 1, увеличиваем
+        # Если она равна -1, уменьшаем
+        if self.circle_run == 1:
             self.circle_radius += 2
-        elif self.circle == -1:
+        elif self.circle_run == -1:
             self.circle_radius -= 2
         if self.circle_radius > 5:
-            color = pygame.color.Color('black')
+            color = pygame.color.Color('black')  # Рисуем щит
             color.r = 66
             color.b = 151
             color.g = 138
@@ -607,44 +615,44 @@ class Boss(pygame.sprite.Sprite):
                                self.circle_radius, 5)
 
     def start_shield(self):
+        """Функция для создания щита"""
         if self.circle_radius < self.max_radius:
-            self.circle = 1
-            self.shield_health = 90
+            self.circle_run = 1  # Увеличиваем щит с помощью этой переменной
+            self.shield_health = BOSS_SHIELD_MAX_HEALTH  # Увеличиваем здоровье щита
 
     def end_shield(self):
-        self.circle = -1
-        self.shield_health = 0
+        """Функция для того чтобы убрать щит"""
+        self.circle_run = -1  # Уменьшаем щит с помощью этой переменной
+        self.shield_health = 0  # Убираем здоровье щита
         self.shield_rect = None
 
     def shot(self):
+        """Функция, управляющая атаками босса"""
         if not self.get_moved():
             return
         if self.rect.x <= player.rect.x - 8 <= self.rect.right \
                 or self.rect.x <= player.rect.right + 8 <= self.rect.right:
-            self.inter_shot()
+            self.inter_shot()  # Если игрок под боссом, делаем атаку вниз
         else:
-            self.n = random.randint(0, 1)
-            if self.n != 1:
-                self.sq_shot()
+            self.shot_choice = random.choice([0, 0, 0, 1])
+            if self.shot_choice != 1 and self.health < BOSS_HEALTH / 2:  # Атака по всей площади довольно жёсткая,
+                # поэтому используем её только после того, как осталось меньше половины здоровья и то с шансом 75 %
+                self.square_shot()
             else:
+                # Эту атаку используем, если здоровья ещё много или с шансом 25 %
                 self.out_shot()
 
-    def chrad(self):
-        if (self.circle_radius < 5 and self.circle == -1) or (
-                self.circle_radius > self.max_radius - 5 and self.circle == 1):
-            self.circle = 0
+    def change_radius_event(self):
+        """Функция, которая обрабатывает события, связанные с изменением щита.
+         Также закрепляет щит в статичном состоянии"""
+        if (self.circle_radius < 5 and self.circle_run == -1) or (
+                self.circle_radius > self.max_radius - 5 and self.circle_run == 1):
+            self.circle_run = 0  # Если щит достиг максимального или минимального значения, то он не должен дальше расти
             self.shield_rect = (self.rect.x - 21, self.rect.top, self.max_radius * 2 - 2, self.max_radius * 2)
-        self.change_circle_radius()
-
-    def get_moved(self):
-        if not player:
-            return
-        if player.rect.top + player.rect.h - self.rect.top < HEIGHT:
-            return True
-        return False
+        self.change_circle_radius()  # Вызываем изменения щита
 
     def update(self):
-        self.chrad()
+        self.change_radius_event()
         if self.shield_rect is not None:
             self.shield_rect = (self.rect.x - 21, self.rect.top, self.max_radius * 2 - 2, self.max_radius * 2)
 
@@ -696,7 +704,7 @@ def view_lesson():
             elif levelmap[i1][j] == '*':
                 Meteor(j, i1, meteors_group)
             elif levelmap[i1][j] == 'n':
-                Enemy(j, i1)
+                Enemy(j, i1, enemies_group)
             elif levelmap[i1][j] == 'P':
                 player1 = Player(j, i1)
             elif levelmap[i1][j] == 'b':
@@ -909,7 +917,7 @@ while True:
                 elif event.type == BOSS_SHOT_TYPE:
                     boss.shot()
                 elif event.type == PLUS_RADIUS:
-                    boss.chrad()
+                    boss.change_radius_event()
         if player is None:
             levelmap, n = end_screen(False, n)
             break
