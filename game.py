@@ -348,7 +348,7 @@ class Enemy(Meteor):
         self.coordinate_to_go = self.rect.x  # Координата, к которой нужно перемещаться
         self.old_counter = 0
         self.list_of_player_weapons = []
-        self.shot = False  # Флаг, чтобы корабли постоянно не стреляли
+        self.shot_choice = None  # Переменная, чтобы знать с какой стороны стрелять по игроку
         self.change_coord = True  # Флаг, чтобы корабль не дергался, постоянно меняя направление
 
     def hurt(self, dam):
@@ -379,17 +379,17 @@ class Enemy(Meteor):
 
     def shot_left(self):
         """Выстрел слева(для игрока)"""
-        if self.ammunition > 0 and self.shot == 2:
+        if self.ammunition > 0 and self.shot_choice == 0:
             EnemyWeapon(self, 0)
             self.ammunition -= 1
-            self.shot = False
+            self.shot_choice = None
 
     def shot_right(self):
         """Выстрел справа"""
-        if self.ammunition > 0 and self.shot == 1:
+        if self.ammunition > 0 and self.shot_choice == 1:
             EnemyWeapon(self, 1)
             self.ammunition -= 1
-            self.shot = False
+            self.shot_choice = None
 
     def move_right(self):
         if self.rect.right + ENEMY_SPEED <= WIDTH + 5:
@@ -440,13 +440,15 @@ class Enemy(Meteor):
                     self.danger_left += 1
                 self.list_of_player_weapons.append(i1.rect.x)
         if player_weapons_counter != self.old_counter:
+            # Если количество выстрелов игрока изменилось, то можно менять координату
+            # Если нет, то безопасное место уже было определено и нужно к нему двигаться
             self.change_coord = True
         if self.rect.x < 17:
             # Если прижиматься к краям, то это делает корабль более уязвимым
             self.danger_left += 2
         if WIDTH - self.rect.right < 17:
             self.danger_right += 2
-        if self.change_coord:
+        if self.change_coord:  # Если можно менять координату, то выбираем бзопасное место
             if self.danger_middle:  # Если кораблю угрожает попадание, то нужно двигаться
                 if self.danger_right <= self.danger_middle and self.danger_left > self.danger_right:
                     # Если справа безопаснее, то двигаемся так, чтобы все выстрелы пролетели слева
@@ -461,6 +463,7 @@ class Enemy(Meteor):
                         self.list_of_player_weapons) - self.rect.w - 3 > 5 else max(
                         self.list_of_player_weapons) + 17 + 3
                 elif self.danger_left == self.danger_right and self.danger_right < self.danger_middle:
+                    # Если слева и справа одинаково опасно, то двигаемся туда, где больше места, учитывая стены
                     if abs(self.rect.x - min(self.list_of_player_weapons) + self.rect.w) > abs(max(
                             self.list_of_player_weapons) - self.rect.x):
                         self.coordinate_to_go = max(self.list_of_player_weapons) + 17 + 3 if max(
@@ -471,20 +474,26 @@ class Enemy(Meteor):
                             self.list_of_player_weapons) - self.rect.w - 3 > 5 else max(
                             self.list_of_player_weapons) + 17 + 3
         if self.coordinate_to_go - 1.5 <= self.rect.x <= self.coordinate_to_go + 1.5:
+            # Корабли могут двигаться только по определённым точкам, поэтому будем считать,
+            # что достигли безопасного места, если попали в него с небольшой погрешностью
             self.moving = False
         elif self.coordinate_to_go > self.rect.x:
+            # Если не достигли безопасного места и оно справа, то двигаемся вправо
             self.moving = True
             self.move_right()
         elif self.rect.x > self.coordinate_to_go:
             self.moving = True
             self.move_left()
-        if player.rect.x <= self.rect.right <= player.rect.right or player.rect.x <= self.rect.x <= player.rect.right:
-            if self.check2():
-                if player.rect.x <= self.rect.right <= player.rect.right:
-                    self.shot = 1
-                elif player.rect.x <= self.rect.x <= player.rect.right:
-                    self.shot = 2
-        elif not self.moving and self.check2() and player_weapons_counter == 0:
+        if self.check2():
+            if player.rect.x <= self.rect.right <= player.rect.right:
+                # Если игрок попадает под правое орудие, то стреляем им
+                self.shot_choice = 1
+            elif player.rect.x <= self.rect.x <= player.rect.right:
+                # Если он попадает под левое орудие, то стреляем из него
+                self.shot_choice = 0
+        if not self.moving and self.check2() and player_weapons_counter == 0:
+            # Если опасности нет и игрок сражается с данным кораблём, то начинаем нападать
+            # Для этого перемещаемся к нему
             if abs(player.rect.x - self.rect.right) < abs(player.rect.right - self.rect.x):
                 self.coordinate_to_go = player.rect.x
             else:
@@ -493,6 +502,7 @@ class Enemy(Meteor):
         self.change_coord = False
 
     def get_moved(self):
+        """Функция показывает, видит ли игрок этот корабль"""
         if not player:
             return
         if player.rect.top + player.rect.h - self.rect.top < HEIGHT:
@@ -880,7 +890,7 @@ while True:
             elif event.type == SHOT_TYPE2:
                 for i in enemies_group:
                     if type(i) is Enemy:
-                        i.do_shot(2)
+                        i.do_shot(0)
             elif event.type == HEAL_TYPE:
                 if player is not None:
                     player.heal(10)
