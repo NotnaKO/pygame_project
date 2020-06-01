@@ -374,8 +374,6 @@ class Enemy(Meteor):
 
     def reamm(self):
         """Пополнение боеприпасов"""
-        if self.ammunition <= 15:
-            self.ammunition += 1
         if self.ammunition < 7:
             self.ammunition += 1
 
@@ -445,18 +443,20 @@ class Enemy(Meteor):
             self.change_coord = True
         if self.rect.x < 17:
             # Если прижиматься к краям, то это делает корабль более уязвимым
-            self.danger_left += 5
+            self.danger_left += 2
         if WIDTH - self.rect.right < 17:
-            self.danger_right += 5
+            self.danger_right += 2
         if self.change_coord:
             if self.danger_middle:  # Если кораблю угрожает попадание, то нужно двигаться
                 if self.danger_right <= self.danger_middle and self.danger_left > self.danger_right:
-                    # Если справо безопаснее, то двигаемся туда
+                    # Если справа безопаснее, то двигаемся так, чтобы все выстрелы пролетели слева
+                    # Если справа стена, то приходится двигаться влево
                     self.coordinate_to_go = max(self.list_of_player_weapons) + 17 + 3 if max(
-                        self.list_of_player_weapons) + 17 + 3 < WIDTH - 5 else min(
+                        self.list_of_player_weapons) + 17 + 3 < WIDTH - self.rect.w - 7 else min(
                         self.list_of_player_weapons) - self.rect.w - 3
                 elif self.danger_left <= self.danger_middle and self.danger_left < self.danger_right:
-                    # Если слева безопаснее, то двигаемся туда
+                    # Если слева безопаснее, то двигаемся так, чтобы все выстрелы пролетели справа
+                    # Если слева стена, то двигаемся вправо
                     self.coordinate_to_go = min(self.list_of_player_weapons) - self.rect.w - 3 if min(
                         self.list_of_player_weapons) - self.rect.w - 3 > 5 else max(
                         self.list_of_player_weapons) + 17 + 3
@@ -464,7 +464,7 @@ class Enemy(Meteor):
                     if abs(self.rect.x - min(self.list_of_player_weapons) + self.rect.w) > abs(max(
                             self.list_of_player_weapons) - self.rect.x):
                         self.coordinate_to_go = max(self.list_of_player_weapons) + 17 + 3 if max(
-                            self.list_of_player_weapons) + 17 + 3 < WIDTH - 5 else min(
+                            self.list_of_player_weapons) + 17 + 3 < WIDTH - self.rect.w - 7 else min(
                             self.list_of_player_weapons) - self.rect.w - 3
                     else:
                         self.coordinate_to_go = min(self.list_of_player_weapons) - self.rect.w - 3 if min(
@@ -486,9 +486,9 @@ class Enemy(Meteor):
                     self.shot = 2
         elif not self.moving and self.check2() and player_weapons_counter == 0:
             if abs(player.rect.x - self.rect.right) < abs(player.rect.right - self.rect.x):
-                self.coordinate_to_go = player.rect.x + 3
+                self.coordinate_to_go = player.rect.x
             else:
-                self.coordinate_to_go = player.rect.right - 3
+                self.coordinate_to_go = player.rect.right - 17 - 7
         self.old_counter = player_weapons_counter
         self.change_coord = False
 
@@ -842,7 +842,6 @@ while True:
     sk = Scale(0, 0)
     am = AmCount(WIDTH - 50, 4)
     lessons_group = None
-
     player = view_lesson()
     Fon2(-200, -1200, fon_group, n2, True)
     for i in boss_group:
