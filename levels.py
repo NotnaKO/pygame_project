@@ -65,23 +65,6 @@ class Fon(pygame.sprite.Sprite):
         self.n = 0  # Счётчик
 
 
-class Fon2(Fon):
-    """Фон, который двигается"""
-
-    def __init__(self, x, y, fon_gr, n1, b=False):
-        super().__init__(x, y, fon_gr, n1, b)
-
-    def update(self, *args):
-        self.n += 1  # Используем счётчик от родительского класса
-        if self.n % 2 == 0:
-            self.move()
-
-    def move(self):
-        if player is not None:  # Ограничение по координате игрока, чтобы не выходить за фон
-            if player.rect.top + player.rect.h - self.rect.top > HEIGHT - 5:
-                self.rect.y += 1
-
-
 class MySprite(pygame.sprite.Sprite):
     """Класс для стрелок"""
 
