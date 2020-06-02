@@ -528,8 +528,7 @@ class Boss(Enemy):
         self.circle_run = 0  # Переменная, показывающая, что происходит со щитом
         self.max_radius = self.rect.h // 2 + 5
         self.circle_radius = 3
-        pygame.time.set_timer(SHIELD_START_TYPE, 5000)
-        pygame.time.set_timer(SHIELD_END_TYPE, 10000)
+        pygame.time.set_timer(SHIELD_START_TYPE, 10000)
         pygame.time.set_timer(BOSS_SHOT_TYPE, 2200)
         self.start_shield()  # Создаём щит
 
@@ -885,7 +884,7 @@ while True:  # Запускаем первый игровой цикл, повт
     # Генерируем все нужные для игры группы спрайтов функцией из модуля const
     # Также создаём переменную boss созначением None
     all_sprites, fon_group, osk_group, weapons_group, meteors_group, enemies_group, player_group, boss_group, service_group, boss = restart_sprites_for_game()
-    # Создаём список для удобного обновления игры
+    # Создаём список для удобного рисования спрайтов
     sp_sprites = [fon_group, osk_group, weapons_group, meteors_group, enemies_group, player_group, boss_group,
                   service_group]
     righting, lefting = False, False  # Создаём флаги для управления игрока
@@ -905,10 +904,11 @@ while True:  # Запускаем первый игровой цикл, повт
         boss = i
     while True:  # Запускаем игровой цикл самого уровня
         screen.fill((0, 0, 0))
-        for event in pygame.event.get():
+        for event in pygame.event.get():  # Запускаем обработчик событий
             if event.type == pygame.QUIT:
                 terminate()
             elif event.type == pygame.KEYDOWN:
+                # С помощью следующих нажатий клавиш реализуется управление игроком
                 if event.key == pygame.K_a or event.key == pygame.K_LEFT:
                     lefting = True
                 if event.key == pygame.K_d or event.key == pygame.K_RIGHT:
@@ -917,11 +917,12 @@ while True:  # Запускаем первый игровой цикл, повт
                     accel = True
                 if event.key == pygame.K_s or event.key == pygame.K_DOWN:
                     deccel = True
-                if event.key == pygame.K_e and player is not None:
+                if event.key == pygame.K_e and player is not None:  # С помощью клавиш E и Q можно стрелять
                     player.shot_e()
                 if event.key == pygame.K_q and player is not None:
                     player.shot_q()
             elif event.type == pygame.KEYUP:
+                # Когда пользователь перестаёт нажимать клавишу, то её действие должно прекратиться
                 if event.key == pygame.K_a or event.key == pygame.K_LEFT:
                     lefting = False
                 if event.key == pygame.K_d or event.key == pygame.K_RIGHT:
@@ -930,7 +931,7 @@ while True:  # Запускаем первый игровой цикл, повт
                     accel = False
                 if event.key == pygame.K_s or event.key == pygame.K_DOWN:
                     deccel = False
-            elif event.type == SHOT_TYPE1:
+            elif event.type == SHOT_TYPE1:  # Во время данных двух событий вражеские корабли делают выстрелы
                 for i in enemies_group:
                     if type(i) is Enemy:
                         i.do_shot(1)
@@ -938,45 +939,42 @@ while True:  # Запускаем первый игровой цикл, повт
                 for i in enemies_group:
                     if type(i) is Enemy:
                         i.do_shot(0)
-            elif event.type == HEAL_TYPE:
+            elif event.type == HEAL_TYPE:  # Во время этого события происходит восстановление здоровья
                 if player is not None:
                     player.heal(10)
                 for i in enemies_group:
                     i.heal(10)
-            elif event.type == 11:
+            elif event.type == AMM_TYPE:  # Во время этого события происходит пополнение боеприпасов
                 if player is not None:
                     player.reamm()
                 for i in enemies_group:
                     i.reamm()
-            if boss is not None:
-                if event.type == SHIELD_START_TYPE:
+            if boss is not None:  # Далее идут события, связанные с боссом
+                if event.type == SHIELD_START_TYPE:  # Это событие включает щит
                     boss.start_shield()
-                elif event.type == SHIELD_END_TYPE:
-                    boss.end_shield()
-                elif event.type == BOSS_SHOT_TYPE:
+                elif event.type == BOSS_SHOT_TYPE:  # Это событие делает атаку босса
                     boss.shot()
-                elif event.type == PLUS_RADIUS:
-                    boss.change_radius_event()
         if player is None:
+            # Если игрок уничтожен, то пользователь проиграл, поэтому выходим из цикла и пишем о поражении
             levelmap, lesson_number = end_screen(False, lesson_number)
             break
-        k = 0
+        k = 0  # Считаем количество оставшихся вражеских кораблей и астероидов с помощью переменной k
         for i in meteors_group:
             k += 1
         for i in enemies_group:
             k += 1
-        if k == 0 and boss is None:
+        if k == 0 and boss is None:  # Если никого больше не осталось, то выходим из цикла и пишем о победе
             levelmap, lesson_number = end_screen(True, lesson_number)
             break
         if player is not None:
-            camera.update(player)
-            for sprite in all_sprites:
+            camera.update(player)  # Настраиваем камеру на игрока
+            for sprite in all_sprites:  # Меняем координаты объектов с помощью камеры
                 camera.apply(sprite)
         for i in sp_sprites:
             i.draw(screen)
         all_sprites.update()
         fon_group.update()
         for i in meteors_group:
-            i.fun()
+            i.fun()  # Обновляем астероиды для их столконвений
         pygame.display.flip()
         clock.tick(FPS)
