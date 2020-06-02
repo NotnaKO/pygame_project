@@ -23,6 +23,7 @@ size = WIDTH, HEIGHT = 450, 650
 LEVEL_WIDTH = 9
 COLUMN_COUNT = WIDTH // LEVEL_WIDTH
 pygame.init()
+pygame.mouse.set_cursor(*pygame.cursors.broken_x)
 screen = pygame.display.set_mode(size)
 clock = pygame.time.Clock()
 music = 0
