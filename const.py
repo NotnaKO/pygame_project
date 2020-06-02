@@ -43,6 +43,3 @@ def restart_sprites_for_lessons():
 
 def get_sprites_group():
     return pygame.sprite.Group()
-
-# all_sprites, fon_group, osk_group, weapons_group, meteors_group, enemies_group, player_group, boss_group, service_group, boss, my_group, lessons_group = restart_sprites()
-# sp_sprites = [fon_group, osk_group, weapons_group, meteors_group, enemies_group, player_group, boss_group, slu_group]
