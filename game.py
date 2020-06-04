@@ -2,6 +2,7 @@ from const import *
 from levels import Fon, start_screen, terminate, end_screen, pause_screen, display_lessons
 from data import images, sounds
 import random
+import pygame
 
 
 def check():
@@ -24,7 +25,7 @@ class Camera:
         # Некоторые объекты не двигаются или имеют собственное движение
         # Поэтому пассивное движение камеры для них не подходит
         if type(obj) != Scale and type(obj) != AmCount and type(obj) != Enemy and type(obj) != Meteor \
-                and type(obj) != Boss and type(obj) != Fon2:
+                and type(obj) != Boss and type(obj) != Fon2 and type(obj) != Fire:
             obj.rect.y += self.dy  # Обычные объекты
         elif type(obj) == Enemy:
             if not check():  # Вражеские корабли не двигаются по вертеикали, когда их видит игрок
@@ -524,6 +525,7 @@ class Boss(Enemy):
         self.shield_health = 0
         self.damage = 20
         self.shot_choice = 0
+        self.f = 1  # Фаза босса
         self.shield_rect = None
         self.circle_run = 0  # Переменная, показывающая, что происходит со щитом
         self.max_radius = self.rect.h // 2 + 5
@@ -544,6 +546,12 @@ class Boss(Enemy):
             self.health -= damage
             if self.health <= 0:
                 self.delete()
+            elif self.health <= BOSS_HEALTH // 2 and self.f == 1:
+                Fire(270, 35)
+                self.f = 2
+            elif self.health <= BOSS_HEALTH * 0.25 and self.f == 2:
+                self.f = 3
+                Fire(230, 90)
 
     def shield_hurt(self, damage):
         """Функция для получения урона щитом. Используется при попадании в босса в щите и просто попадания в щит"""
@@ -631,13 +639,22 @@ class Boss(Enemy):
         if not self.get_moved():
             return
         if self.rect.x <= player.rect.x - 8 <= self.rect.right \
-                or self.rect.x <= player.rect.right + 8 <= self.rect.right:
+                or self.rect.x <= player.rect.right - 3 <= self.rect.right:
             self.inter_shot()  # Если игрок под боссом, делаем атаку вниз
         else:
-            self.shot_choice = random.choice([0, 0, 0, 1])
-            if self.shot_choice != 1 and self.health < BOSS_HEALTH / 2:  # Атака по всей площади довольно жёсткая,
-                # поэтому используем её только после того, как осталось меньше половины здоровья и то с шансом 75 %
-                self.square_shot()
+            if self.f > 1:  # Атака по всей площади довольно жёсткая,
+                if self.f == 2:  # поэтому используем её только со второй фазы
+                    self.shot_choice = random.choice([0, 0, 1, 1])  # В ней шанс такой атаки 50 %
+                    if self.shot_choice == 1:
+                        self.square_shot()
+                    else:
+                        self.out_shot()
+                elif self.f == 3:
+                    self.shot_choice = random.choice([0, 1, 1, 1])  # В 3 фазе шанс атаки 75%
+                    if self.shot_choice == 1:
+                        self.square_shot()
+                    else:
+                        self.out_shot()
             else:
                 # Эту атаку используем, если здоровья ещё много или с шансом 25 %
                 self.out_shot()
@@ -685,6 +702,17 @@ class Oskol(pygame.sprite.Sprite):
         if self.rect.y > player.rect.y + player.rect.h or self.rect.x >= WIDTH or self.rect.right < 0 \
                 or self.time_counter > self.tim:
             self.kill()
+
+
+class Fire(pygame.sprite.Sprite):
+    """Класс огня для босса"""
+
+    def __init__(self, x, y):
+        super().__init__(all_sprites, fire_group)
+        self.image = images['fire']
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
 
 
 class Boom(Oskol):
@@ -883,10 +911,10 @@ level_map, lesson_number = start_screen()
 while True:  # Запускаем первый игровой цикл, повторяющий создание уровней и обрабатывающий конец прохождения уровней
     # Генерируем все нужные для игры группы спрайтов функцией из модуля const
     # Также создаём переменную boss созначением None
-    all_sprites, fon_group, osk_group, weapons_group, meteors_group, enemies_group, player_group, boss_group, service_group, boss = restart_sprites_for_game()
+    all_sprites, fon_group, osk_group, weapons_group, meteors_group, enemies_group, player_group, boss_group, service_group, boss, fire_group = restart_sprites_for_game()
     # Создаём список для удобного рисования спрайтов
     sp_sprites = [fon_group, osk_group, weapons_group, meteors_group, enemies_group, player_group, boss_group,
-                  service_group]
+                  service_group, fire_group]
     exit_via_pause = None
     righting, lefting = False, False  # Создаём флаги для управления игрока
     accel, deccel = False, False

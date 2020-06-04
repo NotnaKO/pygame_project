@@ -306,11 +306,11 @@ def end_screen(won, lesson_number):
     Fon(-400, -200, fon_group, 3)
     fon_group.draw(screen)
     font = pygame.font.Font(None, 50)
-    text_coord = [(100, 100), (120, 300), (95, 350)]
+    text_coord = [(100, 100), (130, 300), (95, 350)]
     if won and lesson_number != 3:  # В зависимости от длины слова меняется координата
         text_coord.append((30, 250))
     else:
-        text_coord.append((75, 250))
+        text_coord.append((60, 250))
     for line in range(len(intro_text)):  # Загрузка текста
         string_rendered = font.render(intro_text[line], 1, pygame.Color('white'))
         intro_rect = string_rendered.get_rect()
