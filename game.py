@@ -1,5 +1,5 @@
 from const import *
-from levels import Fon, start_screen, terminate, end_screen
+from levels import Fon, start_screen, terminate, end_screen, pause_screen, display_lessons
 from data import images, sounds
 import random
 
@@ -703,17 +703,17 @@ class Boom(Oskol):
 def view_lesson():
     """Функция для воплощения на экран карты уровня"""
     player1 = None
-    for i1 in range(len(levelmap)):
-        for j in range(len(levelmap[i1])):
-            if levelmap[i1][j] == '-':
+    for i1 in range(len(level_map)):
+        for j in range(len(level_map[i1])):
+            if level_map[i1][j] == '-':
                 continue
-            elif levelmap[i1][j] == '*':
+            elif level_map[i1][j] == '*':
                 Meteor(j, i1, meteors_group)
-            elif levelmap[i1][j] == 'n':
+            elif level_map[i1][j] == 'n':
                 Enemy(j, i1, enemies_group)
-            elif levelmap[i1][j] == 'P':
+            elif level_map[i1][j] == 'P':
                 player1 = Player(j, i1)
-            elif levelmap[i1][j] == 'b':
+            elif level_map[i1][j] == 'b':
                 Boss(j, i1)
     return player1
 
@@ -879,7 +879,7 @@ class Fon2(Fon):
 # Запускаем игру, используя функции из модуля levels
 # Функция start_screen выводит главное меню. Затем она вызывает функцию display_lesson и возвращает её.
 # Функция display_lesson позволяет игроку выбрать уровень и возвращает сгенерированную карту данного уровня и его номер
-levelmap, lesson_number = start_screen()
+level_map, lesson_number = start_screen()
 while True:  # Запускаем первый игровой цикл, повторяющий создание уровней и обрабатывающий конец прохождения уровней
     # Генерируем все нужные для игры группы спрайтов функцией из модуля const
     # Также создаём переменную boss созначением None
@@ -887,12 +887,10 @@ while True:  # Запускаем первый игровой цикл, повт
     # Создаём список для удобного рисования спрайтов
     sp_sprites = [fon_group, osk_group, weapons_group, meteors_group, enemies_group, player_group, boss_group,
                   service_group]
+    exit_via_pause = None
     righting, lefting = False, False  # Создаём флаги для управления игрока
     accel, deccel = False, False
-    pygame.time.set_timer(SHOT_TYPE1, int((10 - ENEMY_LEVEL) * 1000))  # Запускаем два таймера выстрелов для врагов
-    pygame.time.set_timer(SHOT_TYPE2, int((10 - ENEMY_LEVEL) * 1000))
-    pygame.time.set_timer(AMM_TYPE, 3500)  # Таймер восстановления боеприпасов
-    pygame.time.set_timer(HEAL_TYPE, 10000)  # Таймер восстановления здоровья
+    timer_on()  # Включаем таймеры  на события игры
     screen.fill((0, 0, 0))
     fon_number = random.choice((1, 3))  # Выбираем фон для игры
     camera = Camera()
@@ -921,6 +919,10 @@ while True:  # Запускаем первый игровой цикл, повт
                     player.shot_e()
                 if event.key == pygame.K_q and player is not None:
                     player.shot_q()
+                if event.key == pygame.K_SPACE:  # С помощью пробела, игра ставится на паузу
+                    exit_via_pause = pause_screen(lesson_number)
+                    if exit_via_pause != 'play':
+                        break
             elif event.type == pygame.KEYUP:
                 # Когда пользователь перестаёт нажимать клавишу, то её действие должно прекратиться
                 if event.key == pygame.K_a or event.key == pygame.K_LEFT:
@@ -954,9 +956,11 @@ while True:  # Запускаем первый игровой цикл, повт
                     boss.start_shield()
                 elif event.type == BOSS_SHOT_TYPE:  # Это событие делает атаку босса
                     boss.shot()
+        if exit_via_pause is not None and exit_via_pause != 'play':
+            break
         if player is None:
             # Если игрок уничтожен, то пользователь проиграл, поэтому выходим из цикла и пишем о поражении
-            levelmap, lesson_number = end_screen(False, lesson_number)
+            level_map, lesson_number = end_screen(False, lesson_number)
             break
         k = 0  # Считаем количество оставшихся вражеских кораблей и астероидов с помощью переменной k
         for i in meteors_group:
@@ -964,7 +968,7 @@ while True:  # Запускаем первый игровой цикл, повт
         for i in enemies_group:
             k += 1
         if k == 0 and boss is None:  # Если никого больше не осталось, то выходим из цикла и пишем о победе
-            levelmap, lesson_number = end_screen(True, lesson_number)
+            level_map, lesson_number = end_screen(True, lesson_number)
             break
         if player is not None:
             camera.update(player)  # Настраиваем камеру на игрока
@@ -978,3 +982,7 @@ while True:  # Запускаем первый игровой цикл, повт
             i.fun()  # Обновляем астероиды для их столконвений
         pygame.display.flip()
         clock.tick(FPS)
+    if exit_via_pause == 'les':
+        level_map, lesson_number = display_lessons()
+    elif exit_via_pause == 'main':
+        level_map, lesson_number = start_screen()

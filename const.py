@@ -43,3 +43,10 @@ def restart_sprites_for_lessons():
 
 def get_sprites_group():
     return pygame.sprite.Group()
+
+
+def timer_on():
+    pygame.time.set_timer(SHOT_TYPE1, int((10 - ENEMY_LEVEL) * 1000))  # Запускаем два таймера выстрелов для врагов
+    pygame.time.set_timer(SHOT_TYPE2, int((10 - ENEMY_LEVEL) * 1000))
+    pygame.time.set_timer(AMM_TYPE, 3500)  # Таймер восстановления боеприпасов
+    pygame.time.set_timer(HEAL_TYPE, 10000)  # Таймер восстановления здоровья
