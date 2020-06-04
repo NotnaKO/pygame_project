@@ -27,7 +27,7 @@ def start_screen():
     Fon(-400, -200, fon_group, 1)
     fon_group.draw(screen)
     font = pygame.font.Font(None, 50)
-    text_coord = [160, -170]  # Заполняем фон
+    text_coord = [160, -170]
     for line in intro_text:  # Выводим текст главного меню
         string_rendered = font.render(line, 1, pygame.Color('white'))
         intro_rect = string_rendered.get_rect()
@@ -38,12 +38,12 @@ def start_screen():
         text_coord[0] += intro_rect.height
         sp.append(intro_rect)
         screen.blit(string_rendered, intro_rect)
-    r = sp[1]
+    play_button = sp[1]
     while True:
         for event in pygame.event.get():  # Ждём щелчка для показа уровней
             if event.type == pygame.QUIT:
                 terminate()
-            elif event.type == pygame.MOUSEBUTTONDOWN and r.collidepoint(event.pos):
+            elif event.type == pygame.MOUSEBUTTONDOWN and play_button.collidepoint(event.pos):
                 return display_lessons()
         pygame.display.flip()
         clock.tick(FPS)
@@ -124,6 +124,11 @@ def display_lessons(lesson_number=None):
     Когда пользователь сам заходит, то lesson_number=None"""
     global music
     if lesson_number is None:  # Случай, когда пользователь выбирает уровень
+        if music == 0:  # Запускаем музыку, если она ещё не играет
+            pygame.mixer_music.load(sounds['main_theme'])
+            pygame.mixer_music.play(-1)
+            pygame.mixer_music.set_volume(0.6)
+            music = 1
         screen.fill((0, 0, 0))
         Fon(-10, -10, fon_group, 2)
         for i in range(3):  # Загружаем значки уровней
@@ -225,6 +230,55 @@ def generate_level(filename):  # Собираем уровень
     return map1
 
 
+def pause_screen(lesson_number):
+    """Выводит окно для паузы"""
+    global music
+    answer = None
+    sp = []
+    k = 0
+    intro_text = ['Пауза', "Продолжить", "К уровням", "Главное меню"]
+    screen.fill((0, 0, 0))
+    Fon(-400, -200, fon_group, lesson_number)
+    fon_group.draw(screen)
+    font = pygame.font.Font(None, 50)
+    text_coord = [(170, 100), (110, 300), (130, 350), (105, 400)]
+    for line in range(len(intro_text)):  # Загрузка текста
+        string_rendered = font.render(intro_text[line], 1, pygame.Color('white'))
+        intro_rect = string_rendered.get_rect()
+        intro_rect.top = text_coord[line][1]
+        intro_rect.x = text_coord[line][0]
+        sp.append(intro_rect)
+        screen.blit(string_rendered, intro_rect)
+    play_button = sp[1]
+    lesson_button = sp[2]
+    main_menu_button = sp[3]
+    while True:  # Обработка действий пользователя
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:  # Выход
+                terminate()
+            elif event.type == pygame.MOUSEBUTTONDOWN:  # Нажатие на кнопки
+                if lesson_button.collidepoint(event.pos):
+                    answer = 'les'
+                    pygame.mixer_music.play(-1)
+                    music = 0
+                if main_menu_button.collidepoint(event.pos):
+                    answer = 'main'
+                    pygame.mixer_music.play(-1)
+                    music = 0
+                if play_button.collidepoint(event.pos):
+                    answer = 'play'
+
+        if k % FPS == 0:  # Когда прошла секунда, смотрим сделал ли пользователь выбор или нет
+            if answer is not None:
+                return answer  # Если время прошло выбор сделан, то отправляем этот выбор
+            else:
+                pygame.time.wait(1000)  # Если нет, то останвливаем время дальше, чтобы не потерять события в игре
+            k = 0
+        k += 1
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
 def end_screen(won, lesson_number):
     """Функция для обработки конца игры
     won - показатель победы"""
@@ -252,11 +306,11 @@ def end_screen(won, lesson_number):
     Fon(-400, -200, fon_group, 3)
     fon_group.draw(screen)
     font = pygame.font.Font(None, 50)
-    text_coord = [(100, 100), (120, 300), (95, 350)]
+    text_coord = [(100, 100), (130, 300), (95, 350)]
     if won and lesson_number != 3:  # В зависимости от длины слова меняется координата
         text_coord.append((30, 250))
     else:
-        text_coord.append((75, 250))
+        text_coord.append((60, 250))
     for line in range(len(intro_text)):  # Загрузка текста
         string_rendered = font.render(intro_text[line], 1, pygame.Color('white'))
         intro_rect = string_rendered.get_rect()

@@ -23,6 +23,7 @@ size = WIDTH, HEIGHT = 450, 650
 LEVEL_WIDTH = 9
 COLUMN_COUNT = WIDTH // LEVEL_WIDTH
 pygame.init()
+pygame.mouse.set_cursor(*pygame.cursors.broken_x)
 screen = pygame.display.set_mode(size)
 clock = pygame.time.Clock()
 music = 0
@@ -33,7 +34,7 @@ def restart_sprites_for_game():
     boss1 = None
     return (get_sprites_group(), get_sprites_group(), get_sprites_group(), get_sprites_group(), get_sprites_group(),
             get_sprites_group(), get_sprites_group(), get_sprites_group(),
-            get_sprites_group(), boss1)
+            get_sprites_group(), boss1, get_sprites_group())
 
 
 def restart_sprites_for_lessons():
@@ -43,5 +44,9 @@ def restart_sprites_for_lessons():
 def get_sprites_group():
     return pygame.sprite.Group()
 
-# all_sprites, fon_group, osk_group, weapons_group, meteors_group, enemies_group, player_group, boss_group, service_group, boss, my_group, lessons_group = restart_sprites()
-# sp_sprites = [fon_group, osk_group, weapons_group, meteors_group, enemies_group, player_group, boss_group, slu_group]
+
+def timer_on():
+    pygame.time.set_timer(SHOT_TYPE1, int((10 - ENEMY_LEVEL) * 1000))  # Запускаем два таймера выстрелов для врагов
+    pygame.time.set_timer(SHOT_TYPE2, int((10 - ENEMY_LEVEL) * 1000))
+    pygame.time.set_timer(AMM_TYPE, 3500)  # Таймер восстановления боеприпасов
+    pygame.time.set_timer(HEAL_TYPE, 10000)  # Таймер восстановления здоровья
