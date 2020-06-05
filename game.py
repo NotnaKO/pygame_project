@@ -261,7 +261,7 @@ class Player(pygame.sprite.Sprite):
         self.damage = 30
         self.health = 100
         if scene_speed:
-            self.speed = -PLAYER_SPEED * 1.5
+            self.speed = -PLAYER_SPEED
         else:
             self.speed = PLAYER_SPEED  # Скорость игры
         self.ammunition = PLAYER_AMM  # Количество боеприпасов
@@ -880,23 +880,22 @@ class BossWeapon(PlayerWeapon):
 class Fon2(Fon):
     """Фон, который двигается"""
 
-    def __init__(self, x, y, fon_gr, n1, b=False, scenes=False):
+    def __init__(self, x, y, fon_gr, n1, b=False):
         super().__init__(x, y, fon_gr, n1, b)
-        self.scene = scenes
 
     def update(self, *args):
-        if self.scene:
-            self.move()
+        if any(args):
+            self.move(True)
         else:
             self.n += 1  # Используем счётчик от родительского класса
             if self.n % 2 == 0:
                 self.move()
 
-    def move(self):
+    def move(self, scene=False):
         if player is not None:  # Ограничение по координате игрока, чтобы не выходить за фон
             if player.rect.top + player.rect.h - self.rect.top > HEIGHT - 5:
                 self.rect.y += 1
-        elif self.scene:
+        elif scene:
             self.rect.y += 1
 
 
@@ -924,20 +923,37 @@ def first_scene(scene_fon_number, scene_fon_group):
     screen.fill((0, 0, 0))
     scene_player = Player(4 * COLUMN_COUNT, -100, scene_player_group, coordinates_not_for_scenes=False,
                           append_to_all_sprites=False, scene_speed=True)
-    Fon2(-200, -1200, scene_fon_group, scene_fon_number, True, scenes=True)
+    Fon2(-200, -1200, scene_fon_group, scene_fon_number, True)
     tar = Target(225, 600)
     while True:
-        for event in pygame.event.get():  # Запускаем обработчик событий
-            if event.type == pygame.QUIT:
+        for scene_event in pygame.event.get():  # Запускаем обработчик событий
+            if scene_event.type == pygame.QUIT:
                 terminate()
-        fon_group.update()
         scene_cam.update(tar)
         if scene_player.rect.y > tar.rect.y - 50:
             return
         scene_fon_group.draw(screen)
         scene_player_group.draw(screen)
         scene_player.move(True)
-        scene_fon_group.update()
+        scene_fon_group.update(True)
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+def won_scene(scene_fon_group, scene_player, scene_player_group):
+    scene_cam = Camera()
+    tar = Target(225, scene_player.rect.y)
+    while True:
+        for scene_event in pygame.event.get():  # Запускаем обработчик событий
+            if scene_event.type == pygame.QUIT:
+                terminate()
+        scene_cam.update(tar)
+        if abs(tar.rect.bottom - scene_player.rect.bottom) > HEIGHT:
+            return
+        scene_fon_group.draw(screen)
+        scene_player_group.draw(screen)
+        scene_player.move(True)
+        scene_fon_group.update(True)
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -1041,6 +1057,7 @@ while True:  # Запускаем первый игровой цикл, повт
         for i in enemies_group:
             k += 1
         if k == 0 and boss is None:  # Если никого больше не осталось, то выходим из цикла и пишем о победе
+            won_scene(fon_group, player, player_group)
             level_map, lesson_number = end_screen(True, lesson_number)
             break
         if player is not None:
