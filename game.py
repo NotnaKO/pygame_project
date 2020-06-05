@@ -1,8 +1,12 @@
 from const import *
 from levels import Fon, start_screen, terminate, end_screen, pause_screen, display_lessons
 from data import images, sounds
+from scenes import Target
 import random
 import pygame
+
+
+# import time
 
 
 def check():
@@ -241,15 +245,25 @@ class Meteor(pygame.sprite.Sprite):
 class Player(pygame.sprite.Sprite):
     """Класс игрока"""
 
-    def __init__(self, x, y):
-        super().__init__(player_group, all_sprites)
+    def __init__(self, x, y, group, coordinates_not_for_scenes=True, append_to_all_sprites=True, scene_speed=False):
+        if append_to_all_sprites:
+            super().__init__(group, all_sprites)
+        else:
+            super().__init__(group)
         self.image = images['player']  # Изображение
         self.rect = self.image.get_rect()
-        self.rect.x = x * COLUMN_COUNT  # Координаты
-        self.rect.y = y * GAME_SPEED
+        if coordinates_not_for_scenes:
+            self.rect.x = x * COLUMN_COUNT  # Координаты
+            self.rect.y = y * GAME_SPEED
+        else:
+            self.rect.x = x
+            self.rect.y = y
         self.damage = 30
         self.health = 100
-        self.speed = PLAYER_SPEED  # Скорость игры
+        if scene_speed:
+            self.speed = -PLAYER_SPEED * 1.5
+        else:
+            self.speed = PLAYER_SPEED  # Скорость игры
         self.ammunition = PLAYER_AMM  # Количество боеприпасов
 
     def hurt(self, damage):
@@ -264,9 +278,9 @@ class Player(pygame.sprite.Sprite):
         if self.health > 100:
             self.health = 100
 
-    def move(self):
+    def move(self, scene=False):
         """Функция для перемещения"""
-        if player is not None:
+        if player is not None or scene:
             self.rect.y -= self.speed
 
     def reamm(self):
@@ -728,30 +742,6 @@ class Boom(Oskol):
         self.tim = FPS * 14 // 10
 
 
-def view_lesson():
-    """Функция для воплощения на экран карты уровня"""
-    player1 = None
-    for i1 in range(len(level_map)):
-        for j in range(len(level_map[i1])):
-            if level_map[i1][j] == '-':
-                continue
-            elif level_map[i1][j] == '*':
-                Meteor(j, i1, meteors_group)
-            elif level_map[i1][j] == 'n':
-                Enemy(j, i1, enemies_group)
-            elif level_map[i1][j] == 'P':
-                player1 = Player(j, i1)
-            elif level_map[i1][j] == 'b':
-                Boss(j, i1)
-    return player1
-
-
-def find_vect(vect1, vect2):
-    """Функция для нахождения скорости выстрела босса в системе отсчёта игрока"""
-    vect3 = vect1 + vect2
-    return vect3
-
-
 class PlayerWeapon(pygame.sprite.Sprite):
     """Класс для выстрелов игрока"""
 
@@ -890,18 +880,72 @@ class BossWeapon(PlayerWeapon):
 class Fon2(Fon):
     """Фон, который двигается"""
 
-    def __init__(self, x, y, fon_gr, n1, b=False):
+    def __init__(self, x, y, fon_gr, n1, b=False, scenes=False):
         super().__init__(x, y, fon_gr, n1, b)
+        self.scene = scenes
 
     def update(self, *args):
-        self.n += 1  # Используем счётчик от родительского класса
-        if self.n % 2 == 0:
+        if self.scene:
             self.move()
+        else:
+            self.n += 1  # Используем счётчик от родительского класса
+            if self.n % 2 == 0:
+                self.move()
 
     def move(self):
         if player is not None:  # Ограничение по координате игрока, чтобы не выходить за фон
             if player.rect.top + player.rect.h - self.rect.top > HEIGHT - 5:
                 self.rect.y += 1
+        elif self.scene:
+            self.rect.y += 1
+
+
+def view_lesson():
+    """Функция для воплощения на экран карты уровня"""
+    player1 = None
+    for i1 in range(len(level_map)):
+        for j in range(len(level_map[i1])):
+            if level_map[i1][j] == '-':
+                continue
+            elif level_map[i1][j] == '*':
+                Meteor(j, i1, meteors_group)
+            elif level_map[i1][j] == 'n':
+                Enemy(j, i1, enemies_group)
+            elif level_map[i1][j] == 'P':
+                player1 = Player(j, i1, player_group)
+            elif level_map[i1][j] == 'b':
+                Boss(j, i1)
+    return player1
+
+
+def first_scene(scene_fon_number, scene_fon_group):
+    scene_player_group = get_sprites_group()
+    scene_cam = Camera()
+    screen.fill((0, 0, 0))
+    scene_player = Player(4 * COLUMN_COUNT, -100, scene_player_group, coordinates_not_for_scenes=False,
+                          append_to_all_sprites=False, scene_speed=True)
+    Fon2(-200, -1200, scene_fon_group, scene_fon_number, True, scenes=True)
+    tar = Target(225, 600)
+    while True:
+        for event in pygame.event.get():  # Запускаем обработчик событий
+            if event.type == pygame.QUIT:
+                terminate()
+        fon_group.update()
+        scene_cam.update(tar)
+        if scene_player.rect.y > tar.rect.y - 50:
+            return
+        scene_fon_group.draw(screen)
+        scene_player_group.draw(screen)
+        scene_player.move(True)
+        scene_fon_group.update()
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+def find_vect(vect1, vect2):
+    """Функция для нахождения скорости выстрела босса в системе отсчёта игрока"""
+    vect3 = vect1 + vect2
+    return vect3
 
 
 # Запускаем игру, используя функции из модуля levels
@@ -911,7 +955,10 @@ level_map, lesson_number = start_screen()
 while True:  # Запускаем первый игровой цикл, повторяющий создание уровней и обрабатывающий конец прохождения уровней
     # Генерируем все нужные для игры группы спрайтов функцией из модуля const
     # Также создаём переменную boss созначением None
-    all_sprites, fon_group, osk_group, weapons_group, meteors_group, enemies_group, player_group, boss_group, service_group, boss, fire_group = restart_sprites_for_game()
+    fon_group = get_sprites_group()
+    fon_number = random.choice((1, 3))  # Выбираем фон для игры
+    first_scene(fon_number, fon_group)
+    all_sprites, osk_group, weapons_group, meteors_group, enemies_group, player_group, boss_group, service_group, boss, fire_group = restart_sprites_for_game()
     # Создаём список для удобного рисования спрайтов
     sp_sprites = [fon_group, osk_group, weapons_group, meteors_group, enemies_group, player_group, boss_group,
                   service_group, fire_group]
@@ -920,12 +967,10 @@ while True:  # Запускаем первый игровой цикл, повт
     accel, deccel = False, False
     timer_on()  # Включаем таймеры  на события игры
     screen.fill((0, 0, 0))
-    fon_number = random.choice((1, 3))  # Выбираем фон для игры
     camera = Camera()
     sk = Scale(0, 0)
     am = AmCount(WIDTH - 50, 4)
     player = view_lesson()  # Создаём спрайты по карте уровня с помощью view_lesson, которая возвращает объект игрока
-    Fon2(-200, -1200, fon_group, fon_number, True)
     for i in boss_group:  # Создаём переменную boss с объектом босса, если он есть, если нет, то она остаётся None
         boss = i
     while True:  # Запускаем игровой цикл самого уровня

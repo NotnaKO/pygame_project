@@ -32,7 +32,7 @@ player = None  # Объект игрока, первоначально не за
 
 def restart_sprites_for_game():
     boss1 = None
-    return (get_sprites_group(), get_sprites_group(), get_sprites_group(), get_sprites_group(), get_sprites_group(),
+    return (get_sprites_group(), get_sprites_group(), get_sprites_group(), get_sprites_group(),
             get_sprites_group(), get_sprites_group(), get_sprites_group(),
             get_sprites_group(), boss1, get_sprites_group())
 
