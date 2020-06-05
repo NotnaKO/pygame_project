@@ -1,12 +1,8 @@
 from const import *
 from levels import Fon, start_screen, terminate, end_screen, pause_screen, display_lessons
 from data import images, sounds
-from scenes import Target
 import random
 import pygame
-
-
-# import time
 
 
 def check():
@@ -127,10 +123,15 @@ class Meteor(pygame.sprite.Sprite):
         self.change_right = False  # Эти два флага нужны, чтобы астероиды не улетали до того, как игрок увидит их
         self.health = 30
         self.invulnerability = False  # Неуязвимость
+        self.scene_second_counter = 0
 
     def move(self):
         self.rect.x += self.vect[0] * METEOR_SPEED
         self.rect.y += self.vect[1] * METEOR_SPEED
+
+    def scene_move(self):
+        """Функция для перемещения в сцене"""
+        self.rect.y += 2
 
     def hurt(self, damage):
         """Функция для получения урона"""
@@ -217,29 +218,43 @@ class Meteor(pygame.sprite.Sprite):
     def passive_move(self):
         pass
 
-    def update(self):
-        if player is None:
-            return
-        if not self.check2():  # Если игрок не видит, то астероид двигается пассивно
-            passive = True
+    def update(self, scene=False):
+        if not scene:
+            if player is None:
+                return
+            if not self.check2():  # Если игрок не видит, то астероид двигается пассивно
+                passive = True
+            else:
+                passive = False
+            if not passive:
+                self.move()  # Если нет, то ходит и сталкивается с другими
+                sp_spr = pygame.sprite.spritecollide(self, meteors_group, False)
+                spr = None
+                for i1 in sp_spr:
+                    if i1 is not self:
+                        spr = i1
+                if player is not None:
+                    if spr is not None:
+                        self.change_moving_with_spr(spr)
+                        spr.change_moving_with_spr(self)
+                    if self.rect.y > player.rect.y + player.rect.h or self.rect.x >= WIDTH or self.rect.right < 0:
+                        # Если астероид пролетает игрока, то уже не встретит игрока, поэтому можно его удалить
+                        self.kill()
+            else:
+                self.passive_move()
         else:
-            passive = False
-        if not passive:
-            self.move()  # Если нет, то ходит и сталкивается с другими
+            self.move()
             sp_spr = pygame.sprite.spritecollide(self, meteors_group, False)
             spr = None
             for i1 in sp_spr:
                 if i1 is not self:
                     spr = i1
-            if player is not None:
-                if spr is not None:
-                    self.change_moving_with_spr(spr)
-                    spr.change_moving_with_spr(self)
-                if self.rect.y > player.rect.y + player.rect.h or self.rect.x >= WIDTH or self.rect.right < 0:
-                    # Если астероид пролетает игрока, то уже не встретит игрока, поэтому можно его удалить
-                    self.kill()
-        else:
-            self.passive_move()
+            if spr is not None:
+                self.change_moving_with_spr(spr)
+                spr.change_moving_with_spr(self)
+            if self.rect.x >= WIDTH or self.rect.right < 0:
+                # Если астероид пролетает игрока, то уже не встретит игрока, поэтому можно его удалить
+                self.kill()
 
 
 class Player(pygame.sprite.Sprite):
@@ -248,11 +263,11 @@ class Player(pygame.sprite.Sprite):
     def __init__(self, x, y, group, coordinates_not_for_scenes=True, append_to_all_sprites=True, scene_speed=False):
         if append_to_all_sprites:
             super().__init__(group, all_sprites)
-        else:
+        else:  # В стартовой сцене, ещё нет all_sprites, поэтому его не нужно туда добавлять
             super().__init__(group)
         self.image = images['player']  # Изображение
         self.rect = self.image.get_rect()
-        if coordinates_not_for_scenes:
+        if coordinates_not_for_scenes:  # Для удобства в сценах используются обычные координаты, а не по карте уровня
             self.rect.x = x * COLUMN_COUNT  # Координаты
             self.rect.y = y * GAME_SPEED
         else:
@@ -261,7 +276,7 @@ class Player(pygame.sprite.Sprite):
         self.damage = 30
         self.health = 100
         if scene_speed:
-            self.speed = -PLAYER_SPEED
+            self.speed = -PLAYER_SPEED  # Скорость игрока для стартовой сцены другая
         else:
             self.speed = PLAYER_SPEED  # Скорость игры
         self.ammunition = PLAYER_AMM  # Количество боеприпасов
@@ -281,6 +296,7 @@ class Player(pygame.sprite.Sprite):
     def move(self, scene=False):
         """Функция для перемещения"""
         if player is not None or scene:
+            # Когда происходит стартовая сцена, то player = None, поэтому используется параметр scene
             self.rect.y -= self.speed
 
     def reamm(self):
@@ -337,7 +353,9 @@ class Player(pygame.sprite.Sprite):
         self.ammunition -= 1
 
     def delete(self):  # Уничтожение игрока
-        global player
+        global player, player_lose_coordinates
+        Boom(self.rect.x, self.rect.y, player_die=True)
+        player_lose_coordinates = [self.rect.x, self.rect.y]
         s = sounds['player explode']
         s.play()
         player_group.remove(self)
@@ -424,7 +442,9 @@ class Enemy(Meteor):
             else:
                 self.shot_left()
 
-    def update(self):
+    def update(self, scene=False):
+        if scene:
+            self.scene_move()
         if player is None or not self.check2():
             return
         self.danger_middle = 0
@@ -582,6 +602,7 @@ class Boss(Enemy):
         global boss
         s = sounds['enemy explode']
         s.play()
+        Boom(self.rect.x - 75, self.rect.y, boss_die=True)
         boss_group.remove(self)
         all_sprites.remove(self)
         boss = None
@@ -654,7 +675,14 @@ class Boss(Enemy):
             return
         if self.rect.x <= player.rect.x - 8 <= self.rect.right \
                 or self.rect.x <= player.rect.right - 3 <= self.rect.right:
-            self.inter_shot()  # Если игрок под боссом, делаем атаку вниз
+            if self.f != 3:
+                self.inter_shot()  # Если игрок под боссом, делаем атаку вниз
+            else:
+                self.shot_choice = random.choice([0, 0, 0, 1])  # В 3 фазе шанс атаки 25% на атаку игрока под боссом
+                if self.shot_choice == 1:
+                    self.square_shot()
+                else:
+                    self.inter_shot()
         else:
             if self.f > 1:  # Атака по всей площади довольно жёсткая,
                 if self.f == 2:  # поэтому используем её только со второй фазы
@@ -682,7 +710,11 @@ class Boss(Enemy):
             self.shield_rect = (self.rect.x - 21, self.rect.top, self.max_radius * 2 - 2, self.max_radius * 2)
         self.change_circle_radius()  # Вызываем изменения щита
 
-    def update(self):
+    def update(self, scene=False):
+        if scene:
+            self.scene_move()
+        if player is None:
+            return
         self.change_radius_event()
         if self.shield_rect is not None:
             self.shield_rect = (self.rect.x - 21, self.rect.top, self.max_radius * 2 - 2, self.max_radius * 2)
@@ -705,17 +737,21 @@ class Oskol(pygame.sprite.Sprite):
         self.time_counter = 0  # Счётчик для измерения время жизни
         self.tim = FPS * 2  # Время жизни
 
-    def update(self):
+    def update(self, scene=False):
         """Обработка событий"""
+        if player is None and not scene:
+            return
         self.time_counter += 1
         self.velocity[1] += self.gravity
         self.rect.x += self.velocity[0]
         self.rect.y += self.velocity[1]
-        if player is None:
-            return
-        if self.rect.y > player.rect.y + player.rect.h or self.rect.x >= WIDTH or self.rect.right < 0 \
-                or self.time_counter > self.tim:
-            self.kill()
+        if scene:
+            if self.rect.x >= WIDTH or self.rect.right < 0 or self.time_counter > self.tim:
+                self.kill()
+        else:
+            if self.rect.y > player.rect.y + player.rect.h or self.rect.x >= WIDTH or self.rect.right < 0 \
+                    or self.time_counter > self.tim:
+                self.kill()
 
 
 class Fire(pygame.sprite.Sprite):
@@ -727,19 +763,40 @@ class Fire(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
+        self.scene_second_counter = 0
+
+    def scene_move(self):
+        self.rect.y += 2
+
+    def update(self, scene=False):
+        if scene:
+            self.scene_move()
 
 
 class Boom(Oskol):
     """Класс взрыва вражеских кораблей
     Использует родительский класс Oskol"""
 
-    def __init__(self, x, y):
+    def __init__(self, x, y, player_die=False, boss_die=False):
         super().__init__((x, y), 0, -PLAYER_SPEED // 2)
-        self.image = images['boom']
+        if player_die:
+            self.image = images['player_boom']
+        elif boss_die:
+            self.image = images['boss_boom']
+        else:
+            self.image = images['boom']
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
         self.tim = FPS * 14 // 10
+
+    def update(self, scene=False):
+        if not scene:
+            super().update(scene)
+        else:
+            self.time_counter += 1
+            if self.time_counter > self.tim:
+                self.kill()
 
 
 class PlayerWeapon(pygame.sprite.Sprite):
@@ -877,13 +934,19 @@ class BossWeapon(PlayerWeapon):
             self.delete()
 
 
+class Target:
+    def __init__(self, x, y):
+        self.rect = pygame.Rect(x, y, 0, 0)
+
+
 class Fon2(Fon):
     """Фон, который двигается"""
 
     def __init__(self, x, y, fon_gr, n1, b=False):
         super().__init__(x, y, fon_gr, n1, b)
 
-    def update(self, *args):
+    def update(self,
+               *args):  # В сценах нужно двигать фон быстрее обычного, поэтому в параметры к update в них добавляем True
         if any(args):
             self.move(True)
         else:
@@ -894,9 +957,9 @@ class Fon2(Fon):
     def move(self, scene=False):
         if player is not None:  # Ограничение по координате игрока, чтобы не выходить за фон
             if player.rect.top + player.rect.h - self.rect.top > HEIGHT - 5:
-                self.rect.y += 1
-        elif scene:
-            self.rect.y += 1
+                self.rect.y += 0.5
+        elif scene:  # Когда происходит стартовая сцена, то player = None, поэтому используется параметр scene
+            self.rect.y += 0.5
 
 
 def view_lesson():
@@ -918,29 +981,33 @@ def view_lesson():
 
 
 def first_scene(scene_fon_number, scene_fon_group):
-    scene_player_group = get_sprites_group()
-    scene_cam = Camera()
+    """Функция для стартовой сцены"""
+    scene_player_group = get_sprites_group()  # Создаём группу для игрока
+    scene_cam = Camera()  # Создаём камеру для сцены
     screen.fill((0, 0, 0))
+    # Создаём макет игрока, который будет лететь в это сцене.
     scene_player = Player(4 * COLUMN_COUNT, -100, scene_player_group, coordinates_not_for_scenes=False,
-                          append_to_all_sprites=False, scene_speed=True)
-    Fon2(-200, -1200, scene_fon_group, scene_fon_number, True)
-    tar = Target(225, 600)
+                          append_to_all_sprites=False,
+                          scene_speed=True)
+    Fon2(-200, -1200, scene_fon_group, scene_fon_number, True)  # Фон, который будет двигаться
+    tar = Target(225, 600)  # И класс для фокусирования камеры
     while True:
         for scene_event in pygame.event.get():  # Запускаем обработчик событий
             if scene_event.type == pygame.QUIT:
                 terminate()
-        scene_cam.update(tar)
+        scene_cam.update(tar)  # Фокусируем камеру
         if scene_player.rect.y > tar.rect.y - 50:
-            return
+            return  # Если игрок долетел до края останавливаем стартовую стцену
         scene_fon_group.draw(screen)
         scene_player_group.draw(screen)
-        scene_player.move(True)
-        scene_fon_group.update(True)
+        scene_player.move(True)  # Двигаем игрока
+        scene_fon_group.update(True)  # Двигаем фон быстрее обычного
         pygame.display.flip()
         clock.tick(FPS)
 
 
-def won_scene(scene_fon_group, scene_player, scene_player_group):
+def won_scene(scene_fon_group, scene_player, scene_player_group, scene_boom_group):
+    """Сцена для победы. В ней мы сразу получаем объект игрока, его группу и фон"""
     scene_cam = Camera()
     tar = Target(225, scene_player.rect.y)
     while True:
@@ -948,14 +1015,38 @@ def won_scene(scene_fon_group, scene_player, scene_player_group):
             if scene_event.type == pygame.QUIT:
                 terminate()
         scene_cam.update(tar)
-        if abs(tar.rect.bottom - scene_player.rect.bottom) > HEIGHT:
-            return
-        scene_fon_group.draw(screen)
-        scene_player_group.draw(screen)
+        scene_boom_group.update(True)
         scene_player.move(True)
         scene_fon_group.update(True)
+        if abs(tar.rect.bottom - scene_player.rect.bottom) > HEIGHT:
+            return  # Когда игрок скрылся за экран, то заканчиваем сцену
+        scene_fon_group.draw(screen)
+        scene_player_group.draw(screen)
+        scene_boom_group.draw(screen)
         pygame.display.flip()
         clock.tick(FPS)
+
+
+def lose_scene(scene_list_of_sprites, lose_coord, scene_fon_group):
+    scene_cam = Camera()
+    tar = Target(225, lose_coord[1])
+
+    second_counter = 0
+    while True:
+        for scene_event in pygame.event.get():  # Запускаем обработчик событий
+            if scene_event.type == pygame.QUIT:
+                terminate()
+        if second_counter > 3 * FPS:
+            return
+        screen.fill((0, 0, 0))
+        scene_cam.update(tar)
+        scene_fon_group.draw(screen)
+        for i1 in scene_list_of_sprites:
+            i1.draw(screen)
+            i1.update(True)
+        pygame.display.flip()
+        clock.tick(FPS)
+        second_counter += 1
 
 
 def find_vect(vect1, vect2):
@@ -968,9 +1059,11 @@ def find_vect(vect1, vect2):
 # Функция start_screen выводит главное меню. Затем она вызывает функцию display_lesson и возвращает её.
 # Функция display_lesson позволяет игроку выбрать уровень и возвращает сгенерированную карту данного уровня и его номер
 level_map, lesson_number = start_screen()
+pygame.mouse.set_visible(False)
 while True:  # Запускаем первый игровой цикл, повторяющий создание уровней и обрабатывающий конец прохождения уровней
     # Генерируем все нужные для игры группы спрайтов функцией из модуля const
     # Также создаём переменную boss созначением None
+    player_lose_coordinates = []
     fon_group = get_sprites_group()
     fon_number = random.choice((1, 3))  # Выбираем фон для игры
     first_scene(fon_number, fon_group)
@@ -1049,6 +1142,8 @@ while True:  # Запускаем первый игровой цикл, повт
             break
         if player is None:
             # Если игрок уничтожен, то пользователь проиграл, поэтому выходим из цикла и пишем о поражении
+            lose_scene([meteors_group, boss_group, osk_group, enemies_group, fire_group], player_lose_coordinates,
+                       fon_group)
             level_map, lesson_number = end_screen(False, lesson_number)
             break
         k = 0  # Считаем количество оставшихся вражеских кораблей и астероидов с помощью переменной k
@@ -1057,7 +1152,7 @@ while True:  # Запускаем первый игровой цикл, повт
         for i in enemies_group:
             k += 1
         if k == 0 and boss is None:  # Если никого больше не осталось, то выходим из цикла и пишем о победе
-            won_scene(fon_group, player, player_group)
+            won_scene(fon_group, player, player_group, osk_group)
             level_map, lesson_number = end_screen(True, lesson_number)
             break
         if player is not None:

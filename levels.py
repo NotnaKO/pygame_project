@@ -16,6 +16,7 @@ def terminate():
 def start_screen():
     """Выводит главное меню"""
     global music
+    pygame.mouse.set_visible(True)
     sp = []
     intro_text = ["PySpace", 'Играть']
     if music == 0:  # Запускаем музыку, если она ещё не играет
@@ -123,6 +124,7 @@ def display_lessons(lesson_number=None):
     lesson_number нужно для того чтобы запускать определённый уровень без выбора пользователя.
     Когда пользователь сам заходит, то lesson_number=None"""
     global music
+    pygame.mouse.set_visible(True)
     if lesson_number is None:  # Случай, когда пользователь выбирает уровень
         if music == 0:  # Запускаем музыку, если она ещё не играет
             pygame.mixer_music.load(sounds['main_theme'])
@@ -233,6 +235,7 @@ def generate_level(filename):  # Собираем уровень
 def pause_screen(lesson_number):
     """Выводит окно для паузы"""
     global music
+    pygame.mouse.set_visible(True)
     answer = None
     sp = []
     k = 0
@@ -283,6 +286,7 @@ def end_screen(won, lesson_number):
     """Функция для обработки конца игры
     won - показатель победы"""
     global music
+    pygame.mouse.set_visible(True)
     sp = []
     if won:
         intro_text = ["Вы победили"]
