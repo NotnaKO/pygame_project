@@ -48,26 +48,27 @@ class Camera:
 class Scale(pygame.sprite.Sprite):
     """Класс шкалы здоровья игрока"""
 
-    def __init__(self, x, y):
+    def __init__(self, x, y, falcon_mod):
         super().__init__(all_sprites, service_group)
         self.image = images['scale']
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
+        self.h_max = 100 if not falcon_mod else 150
         self.scale_width = 94
         self.scale_height = 13
         self.color = None
 
     def draw(self, h):
         """Функция рисует шкалу, меняя её цвет с снижением здоровья игрока"""
-        if h >= 70:
+        if h >= 0.7 * self.h_max:
             self.color = pygame.Color('green')
-        elif 30 <= h < 70:
+        elif 0.3 * self.h_max <= h < self.h_max * 0.7:
             self.color = pygame.Color('yellow')
         else:
             self.color = pygame.Color('red')
         pygame.draw.rect(screen, self.color,
-                         (self.rect.x, self.rect.y + 12, self.scale_width * (h / 100), self.scale_height - 3))
+                         (self.rect.x, self.rect.y + 12, self.scale_width * (h / self.h_max), self.scale_height - 3))
 
     def update(self):
         if player is not None:
@@ -361,6 +362,36 @@ class Player(pygame.sprite.Sprite):
         player_group.remove(self)
         all_sprites.remove(self)
         player = None
+
+
+class Falcon(Player):
+    """Класс второго персонажа"""
+
+    def __init__(self, x, y, group, coordinates_not_for_scenes=True, append_to_all_sprites=True, scene_speed=False):
+        super().__init__(x, y, group, coordinates_not_for_scenes, append_to_all_sprites, scene_speed)
+        self.image = images['falcon']
+        self.rect = self.image.get_rect()
+        if coordinates_not_for_scenes:  # Для удобства в сценах используются обычные координаты, а не по карте уровня
+            self.rect.x = x * COLUMN_COUNT  # Координаты
+            self.rect.y = y * GAME_SPEED
+        else:
+            self.rect.x = x
+            self.rect.y = y
+        self.health = 150
+
+    def shot_e(self):  # Выстрел справа, с клавиши E
+        if self.ammunition > 0:
+            FalconWeapon(1)
+            s = sounds['player fire']
+            s.play()
+        self.ammunition -= 1
+
+    def shot_q(self):  # Выстрел слева, с клавиши Q
+        if self.ammunition > 0:
+            FalconWeapon(0)
+            s = sounds['player fire']
+            s.play()
+        self.ammunition -= 1
 
 
 class Enemy(Meteor):
@@ -812,7 +843,7 @@ class PlayerWeapon(pygame.sprite.Sprite):
         else:
             self.rect.x = player.rect.right - 9
         self.rect.y = player.rect.y
-        self.damage = 30
+        self.damage = 20
 
     def move(self):
         """Функция для движения вперёд"""
@@ -851,6 +882,18 @@ class PlayerWeapon(pygame.sprite.Sprite):
         """Убираем объект с поля"""
         weapons_group.remove(self)
         all_sprites.remove(self)
+
+
+class FalconWeapon(PlayerWeapon):
+    """Класс выстрелов для второго вида игрока"""
+
+    def __init__(self, n1):
+        super().__init__(n1)
+        if n1 == 0:  # n1 - показатель с какой стороны нужно создавать выстрел
+            self.rect.x = player.rect.x + 15
+        else:
+            self.rect.x = player.rect.right - 20
+        self.damage = 30
 
 
 class EnemyWeapon(PlayerWeapon):
@@ -942,8 +985,8 @@ class Target:
 class Fon2(Fon):
     """Фон, который двигается"""
 
-    def __init__(self, x, y, fon_gr, n1, b=False):
-        super().__init__(x, y, fon_gr, n1, b)
+    def __init__(self, x, y, fon_gr, n1, battle=False):
+        super().__init__(x, y, fon_gr, n1, battle)
 
     def update(self,
                *args):  # В сценах нужно двигать фон быстрее обычного, поэтому в параметры к update в них добавляем True
@@ -962,7 +1005,7 @@ class Fon2(Fon):
             self.rect.y += 0.5
 
 
-def view_lesson():
+def view_lesson(falcon_mode):
     """Функция для воплощения на экран карты уровня"""
     player1 = None
     for i1 in range(len(level_map)):
@@ -974,21 +1017,29 @@ def view_lesson():
             elif level_map[i1][j] == 'n':
                 Enemy(j, i1, enemies_group)
             elif level_map[i1][j] == 'P':
-                player1 = Player(j, i1, player_group)
+                if falcon_mode:
+                    player1 = Falcon(j, i1, player_group)
+                else:
+                    player1 = Player(j, i1, player_group)
             elif level_map[i1][j] == 'b':
                 Boss(j, i1)
     return player1
 
 
-def first_scene(scene_fon_number, scene_fon_group):
+def first_scene(scene_fon_number, scene_fon_group, falcon_mode):
     """Функция для стартовой сцены"""
     scene_player_group = get_sprites_group()  # Создаём группу для игрока
     scene_cam = Camera()  # Создаём камеру для сцены
     screen.fill((0, 0, 0))
     # Создаём макет игрока, который будет лететь в это сцене.
-    scene_player = Player(4 * COLUMN_COUNT, -100, scene_player_group, coordinates_not_for_scenes=False,
-                          append_to_all_sprites=False,
-                          scene_speed=True)
+    if falcon_mode:
+        scene_player = Falcon(4 * COLUMN_COUNT, -100, scene_player_group, coordinates_not_for_scenes=False,
+                              append_to_all_sprites=False,
+                              scene_speed=True)
+    else:
+        scene_player = Player(4 * COLUMN_COUNT, -100, scene_player_group, coordinates_not_for_scenes=False,
+                              append_to_all_sprites=False,
+                              scene_speed=True)
     Fon2(-200, -1200, scene_fon_group, scene_fon_number, True)  # Фон, который будет двигаться
     tar = Target(225, 600)  # И класс для фокусирования камеры
     while True:
@@ -1055,10 +1106,31 @@ def find_vect(vect1, vect2):
     return vect3
 
 
+def choice_mode_screen():
+    """Функция для выбора корабля игрока"""
+    screen.fill((0, 0, 0))
+    maket_group, choice_fon_group = get_sprites_group(), get_sprites_group()
+    Fon(-300, -200, choice_fon_group, 2)
+    pl1 = Player((WIDTH - 100) // 2, 100, maket_group, coordinates_not_for_scenes=False, append_to_all_sprites=False)
+    pl2 = Falcon((WIDTH - 100) // 2, 400, maket_group, coordinates_not_for_scenes=False, append_to_all_sprites=False)
+    while True:
+        for choice_event in pygame.event.get():
+            if choice_event.type == pygame.QUIT:
+                terminate()
+            elif choice_event.type == pygame.MOUSEBUTTONDOWN and pl1.rect.collidepoint(choice_event.pos):
+                return False
+            elif choice_event.type == pygame.MOUSEBUTTONDOWN and pl2.rect.collidepoint(choice_event.pos):
+                return True
+        choice_fon_group.draw(screen)
+        maket_group.draw(screen)
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
 # Запускаем игру, используя функции из модуля levels
 # Функция start_screen выводит главное меню. Затем она вызывает функцию display_lesson и возвращает её.
 # Функция display_lesson позволяет игроку выбрать уровень и возвращает сгенерированную карту данного уровня и его номер
-level_map, lesson_number = start_screen()
+level_map, lesson_number, falcon_mode = start_screen(choice_mode_screen)
 pygame.mouse.set_visible(False)
 while True:  # Запускаем первый игровой цикл, повторяющий создание уровней и обрабатывающий конец прохождения уровней
     # Генерируем все нужные для игры группы спрайтов функцией из модуля const
@@ -1066,7 +1138,7 @@ while True:  # Запускаем первый игровой цикл, повт
     player_lose_coordinates = []
     fon_group = get_sprites_group()
     fon_number = random.choice((1, 3))  # Выбираем фон для игры
-    first_scene(fon_number, fon_group)
+    first_scene(fon_number, fon_group, falcon_mode)
     all_sprites, osk_group, weapons_group, meteors_group, enemies_group, player_group, boss_group, service_group, boss, fire_group = restart_sprites_for_game()
     # Создаём список для удобного рисования спрайтов
     sp_sprites = [fon_group, osk_group, weapons_group, meteors_group, enemies_group, player_group, boss_group,
@@ -1077,9 +1149,10 @@ while True:  # Запускаем первый игровой цикл, повт
     timer_on()  # Включаем таймеры  на события игры
     screen.fill((0, 0, 0))
     camera = Camera()
-    sk = Scale(0, 0)
+    sk = Scale(0, 0, falcon_mode)
     am = AmCount(WIDTH - 50, 4)
-    player = view_lesson()  # Создаём спрайты по карте уровня с помощью view_lesson, которая возвращает объект игрока
+    player = view_lesson(
+        falcon_mode)  # Создаём спрайты по карте уровня с помощью view_lesson, которая возвращает объект игрока
     for i in boss_group:  # Создаём переменную boss с объектом босса, если он есть, если нет, то она остаётся None
         boss = i
     while True:  # Запускаем игровой цикл самого уровня
@@ -1144,7 +1217,7 @@ while True:  # Запускаем первый игровой цикл, повт
             # Если игрок уничтожен, то пользователь проиграл, поэтому выходим из цикла и пишем о поражении
             lose_scene([meteors_group, boss_group, osk_group, enemies_group, fire_group], player_lose_coordinates,
                        fon_group)
-            level_map, lesson_number = end_screen(False, lesson_number)
+            level_map, lesson_number, falcon_mode = end_screen(False, lesson_number, falcon_mode, choice_mode_screen)
             break
         k = 0  # Считаем количество оставшихся вражеских кораблей и астероидов с помощью переменной k
         for i in meteors_group:
@@ -1153,7 +1226,7 @@ while True:  # Запускаем первый игровой цикл, повт
             k += 1
         if k == 0 and boss is None:  # Если никого больше не осталось, то выходим из цикла и пишем о победе
             won_scene(fon_group, player, player_group, osk_group)
-            level_map, lesson_number = end_screen(True, lesson_number)
+            level_map, lesson_number, falcon_mode = end_screen(True, lesson_number, falcon_mode, choice_mode_screen)
             break
         if player is not None:
             camera.update(player)  # Настраиваем камеру на игрока
@@ -1168,6 +1241,6 @@ while True:  # Запускаем первый игровой цикл, повт
         pygame.display.flip()
         clock.tick(FPS)
     if exit_via_pause == 'les':
-        level_map, lesson_number = display_lessons()
+        level_map, lesson_number, falcon_mode = display_lessons(falcon_mode, choice_mode_screen)
     elif exit_via_pause == 'main':
-        level_map, lesson_number = start_screen()
+        level_map, lesson_number, falcon_mode = start_screen(choice_mode_screen)

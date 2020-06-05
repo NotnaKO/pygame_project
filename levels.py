@@ -13,12 +13,13 @@ def terminate():
     sys.exit()
 
 
-def start_screen():
+def start_screen(function_for_choice_mode_screen):
     """Выводит главное меню"""
     global music
     pygame.mouse.set_visible(True)
     sp = []
-    intro_text = ["PySpace", 'Играть']
+    falcon_mode = False  # Выбор игрока
+    intro_text = ["PySpace", 'Играть', 'Выбор корабля']
     if music == 0:  # Запускаем музыку, если она ещё не играет
         pygame.mixer_music.load(sounds['main_theme'])
         pygame.mixer_music.play(-1)
@@ -28,24 +29,38 @@ def start_screen():
     Fon(-400, -200, fon_group, 1)
     fon_group.draw(screen)
     font = pygame.font.Font(None, 50)
-    text_coord = [160, -170]
-    for line in intro_text:  # Выводим текст главного меню
-        string_rendered = font.render(line, 1, pygame.Color('white'))
+    text_coord = [(140, 60), (150, 290), (80, 350)]
+    for line in range(len(intro_text)):  # Загрузка текста
+        string_rendered = font.render(intro_text[line], 1, pygame.Color('white'))
         intro_rect = string_rendered.get_rect()
-        text_coord[1] += 230
-        intro_rect.top = text_coord[1]
-        text_coord[0] -= 20
-        intro_rect.x = text_coord[0]
-        text_coord[0] += intro_rect.height
+        intro_rect.top = text_coord[line][1]
+        intro_rect.x = text_coord[line][0]
         sp.append(intro_rect)
         screen.blit(string_rendered, intro_rect)
     play_button = sp[1]
+    choice_button = sp[2]
     while True:
         for event in pygame.event.get():  # Ждём щелчка для показа уровней
             if event.type == pygame.QUIT:
                 terminate()
             elif event.type == pygame.MOUSEBUTTONDOWN and play_button.collidepoint(event.pos):
-                return display_lessons()
+                return display_lessons(falcon_mode, function_for_choice_mode_screen)
+            elif event.type == pygame.MOUSEBUTTONDOWN and choice_button.collidepoint(event.pos):
+                falcon_mode = function_for_choice_mode_screen()
+                screen.fill((0, 0, 0))
+                Fon(-400, -200, fon_group, 1)
+                fon_group.draw(screen)
+                font = pygame.font.Font(None, 50)
+                text_coord = [(140, 60), (140, 290), (80, 350)]
+                for line in range(len(intro_text)):  # Загрузка текста
+                    string_rendered = font.render(intro_text[line], 1, pygame.Color('white'))
+                    intro_rect = string_rendered.get_rect()
+                    intro_rect.top = text_coord[line][1]
+                    intro_rect.x = text_coord[line][0]
+                    sp.append(intro_rect)
+                    screen.blit(string_rendered, intro_rect)
+                play_button = sp[1]
+                choice_button = sp[2]
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -53,10 +68,11 @@ def start_screen():
 class Fon(pygame.sprite.Sprite):
     """ Класс фонов для игры"""
 
-    def __init__(self, x, y, fon_gr, n, b=False):
-        """Для инициализации нужны координаты, номер фона (также как для уровней) n, указание фон для босса или нет b"""
+    def __init__(self, x, y, fon_gr, n, battle=False):
+        """Для инициализации нужны координаты, номер фона (также как для уровней) n,
+         указание фон для битвы или нет batle"""
         super().__init__(all_sprites, fon_gr)
-        if not b:
+        if not battle:
             self.image = images[f'fon{n}']
         else:
             self.image = images[f'fonb{n}']
@@ -110,16 +126,16 @@ class Lesson(pygame.sprite.Sprite):
             pygame.mixer_music.load(sounds['game_theme'])
         pygame.mixer_music.play(-1)
 
-    def update(self, *args):  # Смотрим на действия пользователя
-        if self.rect.collidepoint(args[0].pos):
+    def update(self, event, falcon_mode):  # Смотрим на действия пользователя
+        if self.rect.collidepoint(event.pos):
             self.choice_music()
             return generate_level(
-                f'level{self.lesson_number}.txt'), self.lesson_number  # Возвращаем загруженный уровень
+                f'level{self.lesson_number}.txt'), self.lesson_number, falcon_mode  # Возвращаем загруженный уровень
         else:
             return False
 
 
-def display_lessons(lesson_number=None):
+def display_lessons(falcon_mode, function_for_choice_mode_screen, lesson_number=None):
     """Показываем уровни и запускаем их.
     lesson_number нужно для того чтобы запускать определённый уровень без выбора пользователя.
     Когда пользователь сам заходит, то lesson_number=None"""
@@ -142,11 +158,12 @@ def display_lessons(lesson_number=None):
                     terminate()
                 if event.type == pygame.MOUSEBUTTONDOWN:  # Нажатие на уровень
                     for i in lessons_group:
-                        if i.update(event):
-                            return i.update(event)
+                        answer = i.update(event, falcon_mode)
+                        if answer:
+                            return answer
                     for i in my_group:  # Нажатие на стрелку
                         if i.update(event):
-                            return start_screen()
+                            return start_screen(function_for_choice_mode_screen)
             all_sprites.draw(screen)
             pygame.display.flip()
             clock.tick(FPS)
@@ -156,7 +173,7 @@ def display_lessons(lesson_number=None):
                 i.choice_music()
                 pygame.mixer_music.set_volume(0.6)
                 music = 0
-                return generate_level(f'level{lesson_number}.txt'), lesson_number
+                return generate_level(f'level{lesson_number}.txt'), lesson_number, falcon_mode
 
 
 def generate_level(filename):  # Собираем уровень
@@ -282,7 +299,7 @@ def pause_screen(lesson_number):
         clock.tick(FPS)
 
 
-def end_screen(won, lesson_number):
+def end_screen(won, lesson_number, falcon_mode, function_for_choice_mode_screen):
     """Функция для обработки конца игры
     won - показатель победы"""
     global music
@@ -332,14 +349,14 @@ def end_screen(won, lesson_number):
                 terminate()
             elif event.type == pygame.MOUSEBUTTONDOWN:  # Нажатие на кнопки
                 if button_for_lessons.collidepoint(event.pos):
-                    return display_lessons()
+                    return display_lessons(falcon_mode, function_for_choice_mode_screen)
                 if button_for_main.collidepoint(event.pos):
-                    return start_screen()
+                    return start_screen(function_for_choice_mode_screen)
                 if button_for_next_lesson.collidepoint(event.pos):
                     # Используем второй случай display_lessons с переходом на другой уровень без выбора пользователя
                     if not won or lesson_number == 3:
-                        return display_lessons(lesson_number)
+                        return display_lessons(falcon_mode, function_for_choice_mode_screen, lesson_number)
                     else:
-                        return display_lessons(lesson_number + 1)
+                        return display_lessons(falcon_mode, function_for_choice_mode_screen, lesson_number + 1)
         pygame.display.flip()
         clock.tick(FPS)
