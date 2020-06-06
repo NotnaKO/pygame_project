@@ -37,12 +37,12 @@ def draw_start_screen(intro_text, sp, falcon_mode):
     fon_group.draw(screen)
     lay_group = get_sprites_group()
     if falcon_mode:
-        FalconLayout(180, 450, lay_group)
+        FalconLayout(170, 450, lay_group)
     else:
-        PlayerLayout(180, 450, lay_group)
+        PlayerLayout(170, 450, lay_group)
     lay_group.draw(screen)
     font = pygame.font.Font(None, 50)
-    text_coord = [(140, 60), (150, 290), (80, 350)]
+    text_coord = [(140, 70), (150, 200), (80, 260), (150, 320)]
     for line in range(len(intro_text)):  # Загрузка текста
         string_rendered = font.render(intro_text[line], 1, pygame.Color('white'))
         intro_rect = string_rendered.get_rect()
@@ -50,7 +50,7 @@ def draw_start_screen(intro_text, sp, falcon_mode):
         intro_rect.x = text_coord[line][0]
         sp.append(intro_rect)
         screen.blit(string_rendered, intro_rect)
-    return sp[1], sp[2]
+    return sp[1], sp[2], sp[3]
 
 
 def start_screen(function_for_choice_mode_screen, falcon_mode):
@@ -58,22 +58,23 @@ def start_screen(function_for_choice_mode_screen, falcon_mode):
     global music
     pygame.mouse.set_visible(True)
     sp = []
-    intro_text = ["PySpace", 'Играть', 'Выбор корабля']
+    intro_text = ["PySpace", 'Играть', 'Выбор корабля', "Выход"]
     if music == 0:  # Запускаем музыку, если она ещё не играет
         pygame.mixer_music.load(sounds['main_theme'])
         pygame.mixer_music.play(-1)
         pygame.mixer_music.set_volume(0.6)
         music = 1
-    play_button, choice_button = draw_start_screen(intro_text, sp, falcon_mode)
+    play_button, choice_button, exit_button = draw_start_screen(intro_text, sp, falcon_mode)
     while True:
         for event in pygame.event.get():  # Ждём щелчка для показа уровней
-            if event.type == pygame.QUIT:
-                terminate()
+            if event.type == pygame.QUIT or (
+                    event.type == pygame.MOUSEBUTTONDOWN and exit_button.collidepoint(event.pos)):
+                terminate()  # Выход
             elif event.type == pygame.MOUSEBUTTONDOWN and play_button.collidepoint(event.pos):
                 return display_lessons(falcon_mode, function_for_choice_mode_screen)
             elif event.type == pygame.MOUSEBUTTONDOWN and choice_button.collidepoint(event.pos):
                 falcon_mode = function_for_choice_mode_screen()
-                play_button, choice_button = draw_start_screen(intro_text, sp, falcon_mode)
+                play_button, choice_button, exit_button = draw_start_screen(intro_text, sp, falcon_mode)
         pygame.display.flip()
         clock.tick(FPS)
 
