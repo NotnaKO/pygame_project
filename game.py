@@ -978,6 +978,8 @@ class BossWeapon(PlayerWeapon):
 
 
 class Target:
+    """Класс для фокусирования в сценах"""
+
     def __init__(self, x, y):
         self.rect = pygame.Rect(x, y, 0, 0)
 
@@ -1017,7 +1019,7 @@ def view_lesson(falcon_mode):
             elif level_map[i1][j] == 'n':
                 Enemy(j, i1, enemies_group)
             elif level_map[i1][j] == 'P':
-                if falcon_mode:
+                if falcon_mode:  # Создаём игрока в зависимости от выбора пользователя
                     player1 = Falcon(j, i1, player_group)
                 else:
                     player1 = Player(j, i1, player_group)
@@ -1079,15 +1081,16 @@ def won_scene(scene_fon_group, scene_player, scene_player_group, scene_boom_grou
 
 
 def lose_scene(scene_list_of_sprites, lose_coord, scene_fon_group):
+    """Сцена поражения.
+    В ней мы получаем список спрайтов, которые нужно рисовать, координаты уничтожения игрока, группу для фонов"""
     scene_cam = Camera()
     tar = Target(225, lose_coord[1])
-
     second_counter = 0
     while True:
         for scene_event in pygame.event.get():  # Запускаем обработчик событий
             if scene_event.type == pygame.QUIT:
                 terminate()
-        if second_counter > 3 * FPS:
+        if second_counter > 3 * FPS:  # Когда проходит три секунды, заканчиваем сцену
             return
         screen.fill((0, 0, 0))
         scene_cam.update(tar)
@@ -1109,14 +1112,16 @@ def find_vect(vect1, vect2):
 def choice_mode_screen():
     """Функция для выбора корабля игрока"""
     screen.fill((0, 0, 0))
-    maket_group, choice_fon_group = get_sprites_group(), get_sprites_group()
-    Fon(-300, -200, choice_fon_group, 2)
+    maket_group, choice_fon_group = get_sprites_group(), get_sprites_group()  # Создаём макеты для кораблей
+    Fon(-300, -200, choice_fon_group, 2)  # Создаём фон
+    # Создаём корабли
     pl1 = Player((WIDTH - 100) // 2, 100, maket_group, coordinates_not_for_scenes=False, append_to_all_sprites=False)
     pl2 = Falcon((WIDTH - 100) // 2, 400, maket_group, coordinates_not_for_scenes=False, append_to_all_sprites=False)
     while True:
         for choice_event in pygame.event.get():
             if choice_event.type == pygame.QUIT:
                 terminate()
+            # Смотрим за выбором пользователя
             elif choice_event.type == pygame.MOUSEBUTTONDOWN and pl1.rect.collidepoint(choice_event.pos):
                 return False
             elif choice_event.type == pygame.MOUSEBUTTONDOWN and pl2.rect.collidepoint(choice_event.pos):
