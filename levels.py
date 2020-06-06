@@ -7,27 +7,40 @@ player = None  # Объект игрока, первоначально не за
 all_sprites, my_group, lessons_group, fon_group = restart_sprites_for_lessons()
 
 
+class PlayerLayout(pygame.sprite.Sprite):
+    def __init__(self, x, y, layout_group):
+        super().__init__(layout_group)
+        self.image = images['player']
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+
+
+class FalconLayout(pygame.sprite.Sprite):
+    def __init__(self, x, y, layout_group):
+        super().__init__(layout_group)
+        self.image = images['falcon']
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+
+
 def terminate():
     """Функция для выхода"""
     pygame.quit()
     sys.exit()
 
 
-def start_screen(function_for_choice_mode_screen):
-    """Выводит главное меню"""
-    global music
-    pygame.mouse.set_visible(True)
-    sp = []
-    falcon_mode = False  # Выбор игрока
-    intro_text = ["PySpace", 'Играть', 'Выбор корабля']
-    if music == 0:  # Запускаем музыку, если она ещё не играет
-        pygame.mixer_music.load(sounds['main_theme'])
-        pygame.mixer_music.play(-1)
-        pygame.mixer_music.set_volume(0.6)
-        music = 1
+def draw_start_screen(intro_text, sp, falcon_mode):
     screen.fill((0, 0, 0))
     Fon(-400, -200, fon_group, 1)
     fon_group.draw(screen)
+    lay_group = get_sprites_group()
+    if falcon_mode:
+        FalconLayout(180, 450, lay_group)
+    else:
+        PlayerLayout(180, 450, lay_group)
+    lay_group.draw(screen)
     font = pygame.font.Font(None, 50)
     text_coord = [(140, 60), (150, 290), (80, 350)]
     for line in range(len(intro_text)):  # Загрузка текста
@@ -37,8 +50,21 @@ def start_screen(function_for_choice_mode_screen):
         intro_rect.x = text_coord[line][0]
         sp.append(intro_rect)
         screen.blit(string_rendered, intro_rect)
-    play_button = sp[1]
-    choice_button = sp[2]
+    return sp[1], sp[2]
+
+
+def start_screen(function_for_choice_mode_screen, falcon_mode):
+    """Выводит главное меню"""
+    global music
+    pygame.mouse.set_visible(True)
+    sp = []
+    intro_text = ["PySpace", 'Играть', 'Выбор корабля']
+    if music == 0:  # Запускаем музыку, если она ещё не играет
+        pygame.mixer_music.load(sounds['main_theme'])
+        pygame.mixer_music.play(-1)
+        pygame.mixer_music.set_volume(0.6)
+        music = 1
+    play_button, choice_button = draw_start_screen(intro_text, sp, falcon_mode)
     while True:
         for event in pygame.event.get():  # Ждём щелчка для показа уровней
             if event.type == pygame.QUIT:
@@ -47,20 +73,7 @@ def start_screen(function_for_choice_mode_screen):
                 return display_lessons(falcon_mode, function_for_choice_mode_screen)
             elif event.type == pygame.MOUSEBUTTONDOWN and choice_button.collidepoint(event.pos):
                 falcon_mode = function_for_choice_mode_screen()
-                screen.fill((0, 0, 0))
-                Fon(-400, -200, fon_group, 1)
-                fon_group.draw(screen)
-                font = pygame.font.Font(None, 50)
-                text_coord = [(140, 60), (140, 290), (80, 350)]
-                for line in range(len(intro_text)):  # Загрузка текста
-                    string_rendered = font.render(intro_text[line], 1, pygame.Color('white'))
-                    intro_rect = string_rendered.get_rect()
-                    intro_rect.top = text_coord[line][1]
-                    intro_rect.x = text_coord[line][0]
-                    sp.append(intro_rect)
-                    screen.blit(string_rendered, intro_rect)
-                play_button = sp[1]
-                choice_button = sp[2]
+                play_button, choice_button = draw_start_screen(intro_text, sp, falcon_mode)
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -163,7 +176,7 @@ def display_lessons(falcon_mode, function_for_choice_mode_screen, lesson_number=
                             return answer
                     for i in my_group:  # Нажатие на стрелку
                         if i.update(event):
-                            return start_screen(function_for_choice_mode_screen)
+                            return start_screen(function_for_choice_mode_screen, falcon_mode)
             all_sprites.draw(screen)
             pygame.display.flip()
             clock.tick(FPS)
@@ -261,7 +274,7 @@ def pause_screen(lesson_number):
     Fon(-400, -200, fon_group, lesson_number)
     fon_group.draw(screen)
     font = pygame.font.Font(None, 50)
-    text_coord = [(170, 100), (110, 300), (130, 350), (105, 400)]
+    text_coord = [(170, 100), (110, 300), (130, 350), (100, 400)]
     for line in range(len(intro_text)):  # Загрузка текста
         string_rendered = font.render(intro_text[line], 1, pygame.Color('white'))
         intro_rect = string_rendered.get_rect()
@@ -351,7 +364,7 @@ def end_screen(won, lesson_number, falcon_mode, function_for_choice_mode_screen)
                 if button_for_lessons.collidepoint(event.pos):
                     return display_lessons(falcon_mode, function_for_choice_mode_screen)
                 if button_for_main.collidepoint(event.pos):
-                    return start_screen(function_for_choice_mode_screen)
+                    return start_screen(function_for_choice_mode_screen, falcon_mode)
                 if button_for_next_lesson.collidepoint(event.pos):
                     # Используем второй случай display_lessons с переходом на другой уровень без выбора пользователя
                     if not won or lesson_number == 3:
