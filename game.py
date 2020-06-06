@@ -1136,8 +1136,8 @@ def choice_mode_screen():
 # Функция start_screen выводит главное меню. Затем она вызывает функцию display_lesson и возвращает её.
 # Функция display_lesson позволяет игроку выбрать уровень и возвращает сгенерированную карту данного уровня и его номер
 level_map, lesson_number, falcon_mode = start_screen(choice_mode_screen, falcon_mode=False)
-pygame.mouse.set_visible(False)
 while True:  # Запускаем первый игровой цикл, повторяющий создание уровней и обрабатывающий конец прохождения уровней
+    pygame.mouse.set_visible(False)
     # Генерируем все нужные для игры группы спрайтов функцией из модуля const
     # Также создаём переменную boss созначением None
     player_lose_coordinates = []
