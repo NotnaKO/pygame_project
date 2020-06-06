@@ -1,5 +1,10 @@
 import pygame
 
+
+def create_cursor():
+    pygame.mouse.set_cursor(*pygame.cursors.broken_x)
+
+
 GAME_SPEED = 200  # дальность расположения метеоров
 MY_EVENT_TYPE = 10  # Просто число для события
 SHOT_TYPE1 = 21  # Событие для выстрела слева
@@ -23,7 +28,7 @@ size = WIDTH, HEIGHT = 450, 650
 LEVEL_WIDTH = 9
 COLUMN_COUNT = WIDTH // LEVEL_WIDTH
 pygame.init()
-pygame.mouse.set_cursor(*pygame.cursors.broken_x)
+create_cursor()
 screen = pygame.display.set_mode(size)
 clock = pygame.time.Clock()
 music = 0
@@ -32,7 +37,7 @@ player = None  # Объект игрока, первоначально не за
 
 def restart_sprites_for_game():
     boss1 = None
-    return (get_sprites_group(), get_sprites_group(), get_sprites_group(), get_sprites_group(), get_sprites_group(),
+    return (get_sprites_group(), get_sprites_group(), get_sprites_group(), get_sprites_group(),
             get_sprites_group(), get_sprites_group(), get_sprites_group(),
             get_sprites_group(), boss1, get_sprites_group())
 
