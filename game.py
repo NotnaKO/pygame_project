@@ -1167,19 +1167,19 @@ while True:  # Запускаем первый игровой цикл, повт
                 terminate()
             elif event.type == pygame.KEYDOWN:
                 # С помощью следующих нажатий клавиш реализуется управление игроком
-                if event.key == pygame.K_a or event.key == pygame.K_LEFT:
+                if event.key == pygame.K_LEFT:
                     lefting = True
-                if event.key == pygame.K_d or event.key == pygame.K_RIGHT:
+                elif event.key == pygame.K_RIGHT:
                     righting = True
-                if event.key == pygame.K_w or event.key == pygame.K_UP:
+                elif event.key == pygame.K_UP:
                     accel = True
-                if event.key == pygame.K_s or event.key == pygame.K_DOWN:
+                elif event.key == pygame.K_DOWN:
                     deccel = True
-                if event.key == pygame.K_e and player is not None:  # С помощью клавиш E и Q можно стрелять
+                elif event.key == pygame.K_e and player is not None:  # С помощью клавиш E и Q можно стрелять
                     player.shot_e()
-                if event.key == pygame.K_q and player is not None:
+                elif event.key == pygame.K_q and player is not None:
                     player.shot_q()
-                if event.key == pygame.K_SPACE:  # С помощью пробела, игра ставится на паузу
+                elif event.key == pygame.K_SPACE:  # С помощью пробела, игра ставится на паузу
                     exit_via_pause = pause_screen(lesson_number)
                     if exit_via_pause != 'play':
                         break
